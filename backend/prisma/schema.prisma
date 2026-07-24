@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")  // La URL va aquí en Prisma 6
+}
+
+model Usuario {
+  id_usuario   Int      @id @default(autoincrement())
+  nombre       String   @db.VarChar(100)
+  correo       String   @unique @db.VarChar(100)
+  contrasena   String   @db.VarChar(255)
+  rol          String   // Cambiado: sin @db.Enum, Prisma lo manejará como String
+  created_at   DateTime @default(now()) @db.Timestamp(0)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  partidos_programados Partido[]  @relation("partidos_programados")
+  resultados_registrados Resultado[] @relation("resultados_registrados")
+}
+
+model Club {
+  id_club         Int      @id @default(autoincrement())
+  nombre          String   @unique @db.VarChar(100)
+  ciudad          String   @db.VarChar(100)
+  fecha_fundacion DateTime? @db.Date
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  jugadores       Jugador[]
+  partidos_local  Partido[] @relation("partidos_local")
+  partidos_visitante Partido[] @relation("partidos_visitante")
+  posiciones      TablaPosiciones[]
+}
+
+model Jugador {
+  id_jugador       Int      @id @default(autoincrement())
+  nombre           String   @db.VarChar(100)
+  ciudad           String   @db.VarChar(100)
+  fecha_nacimiento DateTime @db.Date
+  id_club          Int
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  club             Club     @relation(fields: [id_club], references: [id_club])
+  disciplinas      JugadorDisciplina[]
+
+  @@index([id_club])
+}
+
+model Disciplina {
+  id_disciplina    Int      @id @default(autoincrement())
+  nombre           String   @unique @db.VarChar(20) // Cambiado: sin @db.Enum
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  categorias       Categoria[]
+  jugadores        JugadorDisciplina[]
+}
+
+model Categoria {
+  id_categoria     Int      @id @default(autoincrement())
+  nombre           String   @db.VarChar(50)
+  id_disciplina    Int
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  disciplina       Disciplina @relation(fields: [id_disciplina], references: [id_disciplina])
+  partidos         Partido[]
+}
+
+model Temporada {
+  id_temporada     Int      @id @default(autoincrement())
+  año              Int      @unique // Cambiado: @db.Year no es necesario
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  partidos         Partido[]
+  posiciones       TablaPosiciones[]
+}
+
+model Arbitro {
+  id_arbitro       Int      @id @default(autoincrement())
+  nombre           String   @db.VarChar(100)
+  categoria        String   @db.VarChar(50)
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  partidos         Partido[]
+}
+
+model Partido {
+  id_partido          Int      @id @default(autoincrement())
+  fecha               DateTime @db.Date
+  hora                String   @db.VarChar(10) // Cambiado: @db.Time a @db.VarChar
+  lugar               String   @db.VarChar(200)
+  id_categoria        Int
+  id_club_local       Int
+  id_club_visitante   Int
+  id_temporada        Int
+  id_arbitro          Int
+  programado_por      Int
+  created_at          DateTime @default(now()) @db.Timestamp(0)
+  updated_at          DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  categoria           Categoria @relation(fields: [id_categoria], references: [id_categoria])
+  club_local          Club @relation("partidos_local", fields: [id_club_local], references: [id_club])
+  club_visitante      Club @relation("partidos_visitante", fields: [id_club_visitante], references: [id_club])
+  temporada           Temporada @relation(fields: [id_temporada], references: [id_temporada])
+  arbitro             Arbitro @relation(fields: [id_arbitro], references: [id_arbitro])
+  programador         Usuario @relation("partidos_programados", fields: [programado_por], references: [id_usuario])
+  
+  resultado           Resultado?
+}
+
+model Resultado {
+  id_resultado        Int      @id @default(autoincrement())
+  id_partido          Int      @unique
+  marcador_local      Int?
+  marcador_visitante  Int?
+  registrado_por      Int
+  created_at          DateTime @default(now()) @db.Timestamp(0)
+  updated_at          DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  partido             Partido  @relation(fields: [id_partido], references: [id_partido])
+  registrador         Usuario  @relation("resultados_registrados", fields: [registrado_por], references: [id_usuario])
+}
+
+model JugadorDisciplina {
+  id_jugador          Int
+  id_disciplina       Int
+  
+  jugador             Jugador @relation(fields: [id_jugador], references: [id_jugador])
+  disciplina          Disciplina @relation(fields: [id_disciplina], references: [id_disciplina])
+  
+  @@id([id_jugador, id_disciplina])
+}
+
+model TablaPosiciones {
+  id_posicion         Int      @id @default(autoincrement())
+  id_temporada        Int
+  id_club             Int
+  puntos              Int      @default(0)
+  pj                  Int      @default(0)
+  pg                  Int      @default(0)
+  pe                  Int      @default(0)
+  pp                  Int      @default(0)
+  gf                  Int      @default(0)
+  gc                  Int      @default(0)
+  created_at          DateTime @default(now()) @db.Timestamp(0)
+  updated_at          DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  
+  temporada           Temporada @relation(fields: [id_temporada], references: [id_temporada])
+  club                Club @relation(fields: [id_club], references: [id_club])
+  
+  @@unique([id_temporada, id_club])
+}
