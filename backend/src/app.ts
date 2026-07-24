@@ -8,6 +8,7 @@ import clubRoutes from "./routes/club.routes";
 import jugadorRoutes from "./routes/jugador.routes";
 import disciplinaRoutes from "./routes/disciplina.routes";
 import categoriaRoutes from "./routes/categoria.routes";
+import temporadaRoutes from "./routes/temporada.routes";
 
 const app = express();
 
@@ -38,5 +39,6 @@ app.use("/api/clubes", clubRoutes);
 app.use("/api/jugadores", jugadorRoutes);
 app.use("/api/disciplinas", disciplinaRoutes);
 app.use("/api/categorias", categoriaRoutes);
+app.use("/api/temporadas", temporadaRoutes);
 
 export default app;
