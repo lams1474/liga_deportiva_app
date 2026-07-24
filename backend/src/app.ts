@@ -9,6 +9,7 @@ import jugadorRoutes from "./routes/jugador.routes";
 import disciplinaRoutes from "./routes/disciplina.routes";
 import categoriaRoutes from "./routes/categoria.routes";
 import temporadaRoutes from "./routes/temporada.routes";
+import arbitroRoutes from "./routes/arbitro.routes";
 
 const app = express();
 
@@ -40,5 +41,6 @@ app.use("/api/jugadores", jugadorRoutes);
 app.use("/api/disciplinas", disciplinaRoutes);
 app.use("/api/categorias", categoriaRoutes);
 app.use("/api/temporadas", temporadaRoutes);
+app.use("/api/arbitros", arbitroRoutes);
 
 export default app;
