@@ -31,6 +31,12 @@ console.log("partido OK");
 import resultadoRoutes from "./routes/resultado.routes";
 console.log("resultado OK");
 
+import tablaPosicionesRoutes from "./routes/tablaPosiciones.routes";
+console.log("tablaPosiciones OK");
+
+import jugadorDisciplinaRoutes from "./routes/jugadorDisciplina.routes";
+console.log("jugadorDisciplina OK");
+
 const app = express();
 
 // Middlewares
@@ -64,6 +70,8 @@ app.use("/api/temporadas", temporadaRoutes);
 app.use("/api/arbitros", arbitroRoutes);
 app.use("/api/partidos", partidoRoutes);
 app.use("/api/resultados", resultadoRoutes);
+app.use("/api/tabla-posiciones", tablaPosicionesRoutes);
+app.use("/api/jugador-disciplinas", jugadorDisciplinaRoutes);
 
 console.log("APP CARGADA");
 console.log("Registrando /api/partidos");
