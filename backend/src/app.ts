@@ -28,6 +28,8 @@ console.log("arbitro OK");
 import partidoRoutes from "./routes/partido.routes";
 console.log("partido OK");
 
+import resultadoRoutes from "./routes/resultado.routes";
+console.log("resultado OK");
 
 const app = express();
 
@@ -61,6 +63,7 @@ app.use("/api/categorias", categoriaRoutes);
 app.use("/api/temporadas", temporadaRoutes);
 app.use("/api/arbitros", arbitroRoutes);
 app.use("/api/partidos", partidoRoutes);
+app.use("/api/resultados", resultadoRoutes);
 
 console.log("APP CARGADA");
 console.log("Registrando /api/partidos");
