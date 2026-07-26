@@ -10,7 +10,14 @@ export class PartidoRepository {
                 club_visitante: true,
                 temporada: true,
                 arbitro: true,
-                programador: true,
+                programador: {
+                    select: {
+                        id_usuario: true,
+                        nombre: true,
+                        correo: true,
+                        rol: true
+                    }
+                },
                 resultado: true
             }
         });
@@ -27,7 +34,14 @@ export class PartidoRepository {
                 club_visitante: true,
                 temporada: true,
                 arbitro: true,
-                programador: true,
+                programador: {
+                    select: {
+                        id_usuario: true,
+                        nombre: true,
+                        correo: true,
+                        rol: true
+                    }
+                },
                 resultado: true
             }
         });

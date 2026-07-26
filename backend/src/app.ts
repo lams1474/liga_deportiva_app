@@ -3,6 +3,8 @@ import cors from "cors";
 import morgan from "morgan";
 import helmet from "helmet";
 
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger";
 
 import usuarioRoutes from "./routes/usuario.routes";
 console.log("usuario OK");
@@ -37,7 +39,17 @@ console.log("tablaPosiciones OK");
 import jugadorDisciplinaRoutes from "./routes/jugadorDisciplina.routes";
 console.log("jugadorDisciplina OK");
 
+import authRoutes from "./routes/auth.routes";
+
+import { verificarToken } from "./middlewares/auth.middleware";
+
+import { verificarRol } from "./middlewares/rol.middleware";
+
+
+
 const app = express();
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Middlewares
 app.use(helmet());
@@ -71,7 +83,9 @@ app.use("/api/arbitros", arbitroRoutes);
 app.use("/api/partidos", partidoRoutes);
 app.use("/api/resultados", resultadoRoutes);
 app.use("/api/tabla-posiciones", tablaPosicionesRoutes);
-app.use("/api/jugador-disciplinas", jugadorDisciplinaRoutes);
+app.use("/api/jugador-disciplina", jugadorDisciplinaRoutes);
+app.use("/api/auth", authRoutes);
+
 
 console.log("APP CARGADA");
 console.log("Registrando /api/partidos");

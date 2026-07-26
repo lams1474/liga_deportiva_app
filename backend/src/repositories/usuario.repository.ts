@@ -3,17 +3,36 @@ import prisma from "../config/prisma";
 export class UsuarioRepository {
 
     async obtenerTodos() {
-        return await prisma.usuario.findMany();
+        return await prisma.usuario.findMany({
+            select: {
+                id_usuario: true,
+                nombre: true,
+                correo: true,
+                rol: true,
+                created_at: true,
+                updated_at: true
+            }
+        });
     }
 
     async obtenerPorId(id: number) {
         return await prisma.usuario.findUnique({
             where: {
                 id_usuario: id
+            },
+            select: {
+                id_usuario: true,
+                nombre: true,
+                correo: true,
+                rol: true,
+                created_at: true,
+                updated_at: true
             }
         });
     }
 
+    // Este método SÍ devuelve contrasena porque
+    // AuthService la necesita para validar el login.
     async obtenerPorCorreo(correo: string) {
         return await prisma.usuario.findUnique({
             where: {
