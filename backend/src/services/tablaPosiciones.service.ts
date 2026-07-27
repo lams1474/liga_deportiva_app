@@ -1,11 +1,33 @@
 import { TablaPosicionesRepository } from "../repositories/tablaPosiciones.repository";
+import cacheService from "./cache.service";
 
 export class TablaPosicionesService {
 
     private repository = new TablaPosicionesRepository();
 
+    private readonly CACHE_KEY = "tabla-posiciones";
+
     async obtenerTodos() {
-        return await this.repository.obtenerTodos();
+
+        // 1. Revisar si existe información en caché
+        const datosCache = cacheService.obtener<any[]>(this.CACHE_KEY);
+
+        if (datosCache) {
+            console.log("🟢 CACHE HIT - Tabla de posiciones");
+            return datosCache;
+        }
+
+        // 2. Si no existe, consultar la base de datos
+        console.log("🟡 CACHE MISS - Consultando base de datos");
+
+        const datos = await this.repository.obtenerTodos();
+
+        // 3. Guardar el resultado en caché
+        cacheService.guardar(this.CACHE_KEY, datos);
+
+        console.log("💾 Datos guardados en caché");
+
+        return datos;
     }
 
     async obtenerPorId(id: number) {
@@ -24,8 +46,14 @@ export class TablaPosicionesService {
         gc: number;
     }) {
 
-        return await this.repository.crear(data);
+        const resultado = await this.repository.crear(data);
 
+        // Invalidar caché después de crear
+        cacheService.eliminar(this.CACHE_KEY);
+
+        console.log("🗑️ Caché invalidada después de crear");
+
+        return resultado;
     }
 
     async actualizar(
@@ -41,14 +69,25 @@ export class TablaPosicionesService {
         }
     ) {
 
-        return await this.repository.actualizar(id, data);
+        const resultado = await this.repository.actualizar(id, data);
 
+        // Invalidar caché después de actualizar
+        cacheService.eliminar(this.CACHE_KEY);
+
+        console.log("🗑️ Caché invalidada después de actualizar");
+
+        return resultado;
     }
 
     async eliminar(id: number) {
 
-        return await this.repository.eliminar(id);
+        const resultado = await this.repository.eliminar(id);
 
+        // Invalidar caché después de eliminar
+        cacheService.eliminar(this.CACHE_KEY);
+
+        console.log("🗑️ Caché invalidada después de eliminar");
+
+        return resultado;
     }
-
 }
