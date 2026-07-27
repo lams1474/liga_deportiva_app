@@ -5,9 +5,29 @@ export class TablaPosicionesRepository {
     async obtenerTodos() {
 
         return await prisma.tablaPosiciones.findMany({
-            include: {
-                temporada: true,
-                club: true
+            select: {
+                id_posicion: true,
+                id_temporada: true,
+                id_club: true,
+                puntos: true,
+                pj: true,
+                pg: true,
+                pe: true,
+                pp: true,
+                gf: true,
+                gc: true,
+                temporada: {
+                    select: {
+                        id_temporada: true,
+                        año: true
+                    }
+                },
+                club: {
+                    select: {
+                        id_club: true,
+                        nombre: true
+                    }
+                }
             },
             orderBy: {
                 puntos: "desc"
@@ -22,9 +42,29 @@ export class TablaPosicionesRepository {
             where: {
                 id_posicion: id
             },
-            include: {
-                temporada: true,
-                club: true
+            select: {
+                id_posicion: true,
+                id_temporada: true,
+                id_club: true,
+                puntos: true,
+                pj: true,
+                pg: true,
+                pe: true,
+                pp: true,
+                gf: true,
+                gc: true,
+                temporada: {
+                    select: {
+                        id_temporada: true,
+                        año: true
+                    }
+                },
+                club: {
+                    select: {
+                        id_club: true,
+                        nombre: true
+                    }
+                }
             }
         });
 
