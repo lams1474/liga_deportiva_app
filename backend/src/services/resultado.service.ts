@@ -1,4 +1,5 @@
 import { ResultadoRepository } from "../repositories/resultado.repository";
+import { resultadoWorker } from "../workers/resultado.worker";
 
 export class ResultadoService {
 
@@ -25,8 +26,14 @@ export class ResultadoService {
             throw new Error("El resultado para este partido ya fue registrado.");
         }
 
-        return await this.repository.crear(data);
+        const resultado = await this.repository.crear(data);
 
+        resultadoWorker.agregarTarea({
+            id_resultado: resultado.id_resultado,
+            id_partido: resultado.id_partido
+        });
+
+        return resultado;
     }
 
     async actualizar(
