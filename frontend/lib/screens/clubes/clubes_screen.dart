@@ -12,37 +12,30 @@ class ClubesScreen extends StatefulWidget {
 }
 
 class _ClubesScreenState extends State<ClubesScreen> {
-
   @override
   void initState() {
     super.initState();
 
-    Future.microtask(
-      () => context.read<ClubProvider>().cargarClubes(),
-    );
+    Future.microtask(() {
+      if (!mounted) return;
+
+      context.read<ClubProvider>().cargarClubes();
+    });
   }
 
   Future<void> confirmarEliminar(int idClub, String nombre) async {
-
     final confirmado = await showDialog<bool>(
-
       context: context,
-
       builder: (_) => AlertDialog(
-
         title: const Text('Eliminar club'),
-
         content: Text(
           '¿Está seguro de eliminar el club "$nombre"?',
         ),
-
         actions: [
-
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
-
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -51,43 +44,35 @@ class _ClubesScreenState extends State<ClubesScreen> {
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Eliminar'),
           ),
-
         ],
-
       ),
-
     );
 
-    if (confirmado != true) return;
+    if (!mounted || confirmado != true) return;
 
-    final ok = await context.read<ClubProvider>().eliminarClub(idClub);
+    final provider = context.read<ClubProvider>();
+
+    final ok = await provider.eliminarClub(idClub);
 
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-
       SnackBar(
-
         content: Text(
           ok
               ? 'Club eliminado correctamente'
               : 'No fue posible eliminar el club',
         ),
-
         backgroundColor: ok ? Colors.green : Colors.red,
-
       ),
-
     );
   }
 
   @override
   Widget build(BuildContext context) {
-
     final provider = context.watch<ClubProvider>();
 
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Clubes'),
         backgroundColor: Colors.green,
@@ -100,6 +85,7 @@ class _ClubesScreenState extends State<ClubesScreen> {
         child: const Icon(Icons.add),
 
         onPressed: () async {
+          final provider = context.read<ClubProvider>();
 
           await Navigator.pushNamed(
             context,
@@ -108,15 +94,12 @@ class _ClubesScreenState extends State<ClubesScreen> {
 
           if (!mounted) return;
 
-          context.read<ClubProvider>().cargarClubes();
-
+          provider.cargarClubes();
         },
       ),
 
       body: Builder(
-
         builder: (_) {
-
           if (provider.cargando) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -138,22 +121,18 @@ class _ClubesScreenState extends State<ClubesScreen> {
           }
 
           return ListView.builder(
-
             itemCount: provider.clubes.length,
 
             itemBuilder: (_, index) {
-
               final club = provider.clubes[index];
 
               return Card(
-
                 margin: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 6,
                 ),
 
                 child: ListTile(
-
                   leading: CircleAvatar(
                     backgroundColor: Colors.green,
                     child: Text(
@@ -173,12 +152,11 @@ class _ClubesScreenState extends State<ClubesScreen> {
                   isThreeLine: true,
 
                   trailing: Row(
-
                     mainAxisSize: MainAxisSize.min,
 
                     children: [
-
                       IconButton(
+                        tooltip: 'Editar club',
 
                         icon: const Icon(
                           Icons.edit,
@@ -186,35 +164,30 @@ class _ClubesScreenState extends State<ClubesScreen> {
                         ),
 
                         onPressed: () async {
+                          final provider =
+                              context.read<ClubProvider>();
 
                           await Navigator.push(
-
                             context,
-
                             MaterialPageRoute(
-
                               builder: (_) => EditarClubScreen(
-
                                 idClub: club.idClub,
                                 nombre: club.nombre,
                                 ciudad: club.ciudad,
-                                fechaFundacion: club.fechaFundacion,
-
+                                fechaFundacion:
+                                    club.fechaFundacion,
                               ),
-
                             ),
-
                           );
 
                           if (!mounted) return;
 
-                          context.read<ClubProvider>().cargarClubes();
-
+                          provider.cargarClubes();
                         },
-
                       ),
 
                       IconButton(
+                        tooltip: 'Eliminar club',
 
                         icon: const Icon(
                           Icons.delete,
@@ -225,27 +198,15 @@ class _ClubesScreenState extends State<ClubesScreen> {
                           club.idClub,
                           club.nombre,
                         ),
-
                       ),
-
                     ],
-
                   ),
-
                 ),
-
               );
-
             },
-
           );
-
         },
-
       ),
-
     );
-
   }
-
 }

@@ -10,6 +10,8 @@ import 'screens/clubes/crear_club_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 
+import 'theme/app_theme.dart';
+
 void main() {
   runApp(
     MultiProvider(
@@ -37,12 +39,7 @@ class LigaDeportivaApp extends StatelessWidget {
 
       title: 'Liga Deportiva Barrial',
 
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-        ),
-      ),
+      theme: AppTheme.theme,
 
       initialRoute: "/",
 
