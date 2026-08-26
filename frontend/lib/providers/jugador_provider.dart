@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
-import '../models/club.dart';
-import '../services/club_service.dart';
+import '../models/jugador.dart';
+import '../services/jugador_service.dart';
 
-class ClubProvider extends ChangeNotifier {
-  final ClubService _service;
+class JugadorProvider extends ChangeNotifier {
+  final JugadorService _service;
 
-  List<Club> _clubs = [];
+  List<Jugador> _jugadores = [];
   bool _isLoading = false;
   String? _errorMessage;
 
-  List<Club> get clubs => _clubs;
+  List<Jugador> get jugadores => _jugadores;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  ClubProvider(this._service);
+  JugadorProvider(this._service);
 
-  Future<void> loadClubs() async {
+  Future<void> loadJugadores() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _clubs = await _service.getClubs();
+      _jugadores = await _service.getJugadores();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -30,14 +30,14 @@ class ClubProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> crearClub(Club club) async {
+  Future<bool> createJugador(Jugador jugador) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final nuevo = await _service.createClub(club);
-      _clubs.add(nuevo);
+      final nuevo = await _service.createJugador(jugador);
+      _jugadores.add(nuevo);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -49,19 +49,16 @@ class ClubProvider extends ChangeNotifier {
     }
   }
 
-  // Alias para mantener compatibilidad
-  Future<bool> createClub(Club club) => crearClub(club);
-
-  Future<bool> actualizarClub(int id, Club club) async {
+  Future<bool> updateJugador(int id, Jugador jugador) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final actualizado = await _service.updateClub(id, club);
-      final index = _clubs.indexWhere((c) => c.idClub == id);
+      final actualizado = await _service.updateJugador(id, jugador);
+      final index = _jugadores.indexWhere((j) => j.idJugador == id);
       if (index != -1) {
-        _clubs[index] = actualizado;
+        _jugadores[index] = actualizado;
       }
       _isLoading = false;
       notifyListeners();
@@ -74,16 +71,14 @@ class ClubProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateClub(int id, Club club) => actualizarClub(id, club);
-
-  Future<bool> deleteClub(int id) async {
+  Future<bool> deleteJugador(int id) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _service.deleteClub(id);
-      _clubs.removeWhere((c) => c.idClub == id);
+      await _service.deleteJugador(id);
+      _jugadores.removeWhere((j) => j.idJugador == id);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -95,9 +90,9 @@ class ClubProvider extends ChangeNotifier {
     }
   }
 
-  Club? getClubById(int id) {
+  Jugador? getJugadorById(int id) {
     try {
-      return _clubs.firstWhere((c) => c.idClub == id);
+      return _jugadores.firstWhere((j) => j.idJugador == id);
     } catch (e) {
       return null;
     }

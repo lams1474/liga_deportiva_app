@@ -1,61 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
+import '../models/usuario.dart';
 
 class AuthProvider extends ChangeNotifier {
-
   final AuthService _authService = AuthService();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  bool _autenticado = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+  Usuario? _usuario;
+  String? _token;
 
-  bool _cargando = false;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  Usuario? get usuario => _usuario;
+  String? get token => _token;
+  bool get isAuthenticated => _token != null;
 
-  bool get autenticado => _autenticado;
+  AuthProvider() {
+    _loadToken();
+  }
 
-  bool get cargando => _cargando;
+  Future<void> _loadToken() async {
+    _token = await _storage.read(key: 'token');
+    print('🔑 Token cargado: ${_token != null ? '✅ Sí' : '❌ No'}');
+    notifyListeners();
+  }
 
-  Future<bool> login(
-    String correo,
-    String contrasena,
-  ) async {
-
-    _cargando = true;
+  Future<bool> login(String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-
-      final ok = await _authService.login(
-        correo,
-        contrasena,
-      );
-
-      _autenticado = ok;
-
-      _cargando = false;
-
+      final response = await _authService.login(email, password);
+      
+      _token = response.token;
+      _usuario = response.usuario;
+      
+      // Guardar token
+      await _storage.write(key: 'token', value: response.token);
+      print('🔑 Token guardado: ${response.token.substring(0, 20)}...');
+      
+      _isLoading = false;
       notifyListeners();
-
-      return ok;
-
+      return true;
     } catch (e) {
-
-      _cargando = false;
-
+      _errorMessage = e.toString();
+      _isLoading = false;
       notifyListeners();
-
-      rethrow;
-
+      return false;
     }
-
   }
 
   Future<void> logout() async {
-
-    await _authService.logout();
-
-    _autenticado = false;
-
+    await _storage.delete(key: 'token');
+    _token = null;
+    _usuario = null;
     notifyListeners();
-
   }
 
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
 }

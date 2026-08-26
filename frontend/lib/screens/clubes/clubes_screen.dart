@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../providers/club_provider.dart';
-import 'editar_club_screen.dart';
+import '../../providers/auth_provider.dart'; // ← IMPORTANTE: Ya lo tienes
+import '../../widgets/club_card.dart';
+import '../../models/club.dart';
 
 class ClubesScreen extends StatefulWidget {
   const ClubesScreen({super.key});
@@ -15,197 +16,163 @@ class _ClubesScreenState extends State<ClubesScreen> {
   @override
   void initState() {
     super.initState();
-
-    Future.microtask(() {
-      if (!mounted) return;
-
-      context.read<ClubProvider>().cargarClubes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.isAuthenticated) {
+        context.read<ClubProvider>().loadClubs();
+      }
     });
-  }
-
-  Future<void> confirmarEliminar(int idClub, String nombre) async {
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Eliminar club'),
-        content: Text(
-          '¿Está seguro de eliminar el club "$nombre"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted || confirmado != true) return;
-
-    final provider = context.read<ClubProvider>();
-
-    final ok = await provider.eliminarClub(idClub);
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? 'Club eliminado correctamente'
-              : 'No fue posible eliminar el club',
-        ),
-        backgroundColor: ok ? Colors.green : Colors.red,
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ClubProvider>();
+    final clubProvider = context.watch<ClubProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clubes'),
-        backgroundColor: Colors.green,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-
-        onPressed: () async {
-          final provider = context.read<ClubProvider>();
-
-          await Navigator.pushNamed(
-            context,
-            '/clubes/crear',
-          );
-
-          if (!mounted) return;
-
-          provider.cargarClubes();
-        },
-      ),
-
-      body: Builder(
-        builder: (_) {
-          if (provider.cargando) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (provider.error != null) {
-            return Center(
-              child: Text(provider.error!),
-            );
-          }
-
-          if (provider.clubes.isEmpty) {
-            return const Center(
-              child: Text(
-                'No existen clubes registrados.',
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: provider.clubes.length,
-
-            itemBuilder: (_, index) {
-              final club = provider.clubes[index];
-
-              return Card(
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green,
-                    child: Text(
-                      club.idClub.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                      ),
+      body: clubProvider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : clubProvider.errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          clubProvider.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: clubProvider.loadClubs,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
                     ),
                   ),
-
-                  title: Text(club.nombre),
-
-                  subtitle: Text(
-                    '${club.ciudad}\nFundación: ${club.fechaFundacion}',
-                  ),
-
-                  isThreeLine: true,
-
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-
-                    children: [
-                      IconButton(
-                        tooltip: 'Editar club',
-
-                        icon: const Icon(
-                          Icons.edit,
-                          color: Colors.blue,
-                        ),
-
-                        onPressed: () async {
-                          final provider =
-                              context.read<ClubProvider>();
-
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => EditarClubScreen(
-                                idClub: club.idClub,
-                                nombre: club.nombre,
-                                ciudad: club.ciudad,
-                                fechaFundacion:
-                                    club.fechaFundacion,
+                )
+              : clubProvider.clubs.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.inbox_outlined,
+                              size: 64,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Sin datos',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
-                          );
-
-                          if (!mounted) return;
-
-                          provider.cargarClubes();
-                        },
-                      ),
-
-                      IconButton(
-                        tooltip: 'Eliminar club',
-
-                        icon: const Icon(
-                          Icons.delete,
-                          color: Colors.red,
-                        ),
-
-                        onPressed: () => confirmarEliminar(
-                          club.idClub,
-                          club.nombre,
+                            const SizedBox(height: 8),
+                            Text(
+                              'No hay clubes registrados.\nPresiona el botón + para agregar uno.',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: clubProvider.clubs.length,
+                      itemBuilder: (context, index) {
+                        final club = clubProvider.clubs[index];
+                        return ClubCard(
+                          club: club,
+                          onTap: () {
+                            // Navegar a detalle (opcional)
+                          },
+                          onEdit: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/clubes/editar',
+                              arguments: club.idClub,
+                            ).then((result) {
+                              if (result == true && mounted) {
+                                context.read<ClubProvider>().loadClubs();
+                              }
+                            });
+                          },
+                          onDelete: () {
+                            _confirmarEliminacion(context, club);
+                          },
+                        );
+                      },
+                    ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/clubes/crear').then((result) {
+            if (result == true && mounted) {
+              context.read<ClubProvider>().loadClubs();
+            }
+          });
         },
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _confirmarEliminacion(BuildContext context, Club club) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar club'),
+        content: Text('¿Estás seguro de eliminar ${club.nombre}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<ClubProvider>().deleteClub(club.idClub!).then((_) {
+                if (mounted) {
+                  context.read<ClubProvider>().loadClubs();
+                }
+              });
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Eliminar'),
+          ),
+        ],
       ),
     );
   }
