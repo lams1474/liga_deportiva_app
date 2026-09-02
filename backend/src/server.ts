@@ -1,11 +1,13 @@
 import app from './app';
 import prisma from './config/prisma';
 
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+// CORREGIDO: Escucha en todas las interfaces (0.0.0.0)
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📱 Acceso desde otros dispositivos: http://[TU_IP]:${PORT}/health`);
 });
 
 // Cierre graceful

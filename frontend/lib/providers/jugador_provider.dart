@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/jugador.dart';
 import '../services/jugador_service.dart';
+import '../database/app_dao.dart';
 
 class JugadorProvider extends ChangeNotifier {
   final JugadorService _service;
@@ -71,6 +72,7 @@ class JugadorProvider extends ChangeNotifier {
     }
   }
 
+  // 🔥 CORREGIDO: deleteJugador ahora realmente elimina
   Future<bool> deleteJugador(int id) async {
     _isLoading = true;
     _errorMessage = null;
@@ -101,5 +103,68 @@ class JugadorProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+    // ============================================================
+  // 🔥 MÉTODOS DE SINCRONIZACIÓN
+  // ============================================================
+
+  // Sincronización: Crear jugador desde la cola
+  Future<bool> syncCreateJugador(Jugador jugador) async {
+    try {
+      final nuevo = await _service.createJugador(jugador);
+      
+      // Verificar si ya existe en la lista local
+      final exists = _jugadores.any((j) => j.idJugador == nuevo.idJugador);
+      if (!exists) {
+        _jugadores.add(nuevo);
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      throw Exception('Error syncCreateJugador: $e');
+    }
+  }
+
+  // Sincronización: Actualizar jugador desde la cola
+  Future<bool> syncUpdateJugador(Jugador jugador) async {
+    try {
+      final actualizado = await _service.updateJugador(jugador.idJugador!, jugador);
+      final index = _jugadores.indexWhere((j) => j.idJugador == jugador.idJugador);
+      if (index != -1) {
+        _jugadores[index] = actualizado;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      throw Exception('Error syncUpdateJugador: $e');
+    }
+  }
+
+  // Sincronización: Eliminar jugador desde la cola
+  Future<bool> syncDeleteJugador(int id) async {
+    try {
+      await _service.deleteJugador(id);
+      _jugadores.removeWhere((j) => j.idJugador == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      throw Exception('Error syncDeleteJugador: $e');
+    }
+  }
+
+  // Guardar jugador localmente (sin conexión)
+  Future<void> _saveJugadorLocal(Jugador jugador) async {
+    final db = AppDao();
+    await db.insertarJugador({
+      'cedula': jugador.cedula,
+      'nombre': jugador.nombre,
+      'ciudad': jugador.ciudad,
+      'fecha_nacimiento': jugador.fechaNacimiento.toIso8601String().split('T').first,
+      'id_club': jugador.idClub,
+      'pendiente_envio': 1,
+      'ultima_sincronizacion': null,
+      'eliminado_local': 0,
+    });
   }
 }

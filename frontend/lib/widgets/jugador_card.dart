@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/jugador.dart';
-import 'app_button.dart';
 
 class JugadorCard extends StatelessWidget {
   final Jugador jugador;
@@ -58,31 +57,48 @@ class JugadorCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    Icons.badge,
+                    size: 14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Cédula: ${jugador.cedula}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Icon(
                     Icons.location_city,
-                    size: 16,
+                    size: 14,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     jugador.ciudad,
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Icon(
                     Icons.sports_baseball,
-                    size: 16,
+                    size: 14,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     jugador.nombreClub ?? 'Sin club',
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -92,18 +108,27 @@ class JugadorCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  AppButton(
-                    label: 'Editar',
+                  ElevatedButton(
                     onPressed: onEdit,
-                    variant: ButtonVariant.outlined,
-                    size: ButtonSize.small,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: theme.colorScheme.primary,
+                      side: BorderSide(color: theme.colorScheme.primary),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: const Text('Editar'),
                   ),
                   const SizedBox(width: 8),
-                  AppButton(
-                    label: 'Eliminar',
+                  ElevatedButton(
                     onPressed: onDelete,
-                    variant: ButtonVariant.danger,
-                    size: ButtonSize.small,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                      foregroundColor: theme.colorScheme.onError,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: const Text('Eliminar'),
                   ),
                 ],
               ),

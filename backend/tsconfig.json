@@ -2,8 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
-
-    "rootDir": "./src",
+    "lib": ["ES2020"],
+    "rootDir": "./",
     "outDir": "./dist",
 
     "strict": true,
@@ -20,7 +20,8 @@
   },
 
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "prisma/**/*"
   ],
 
   "exclude": [

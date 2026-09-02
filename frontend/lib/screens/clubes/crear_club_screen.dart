@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
+import '../../providers/connectivity_provider.dart';
+import '../../providers/sync_provider.dart';
 import '../../models/club.dart';
+import '../../database/app_dao.dart';
 
 class CrearClubScreen extends StatefulWidget {
   const CrearClubScreen({super.key});
@@ -145,41 +148,63 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
       fechaFundacion: _fechaFundacion,
     );
 
-    try {
-      final ok = await context.read<ClubProvider>().crearClub(club);
+    final connectivityProvider = context.read<ConnectivityProvider>();
+    final hasInternet = connectivityProvider.hasInternet;
 
-      setState(() => _isSaving = false);
+    bool ok;
 
-      if (ok && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Club creado exitosamente'),
-            backgroundColor: Colors.green,
+    if (hasInternet) {
+      ok = await context.read<ClubProvider>().crearClub(club);
+    } else {
+      final syncProvider = context.read<SyncProvider>();
+      
+      final db = AppDao();
+      await db.insertarClub({
+        'nombre': club.nombre,
+        'ciudad': club.ciudad,
+        'fecha_fundacion': club.fechaFundacion.toIso8601String().split('T').first,
+        'pendiente_envio': 1,
+        'ultima_sincronizacion': null,
+        'eliminado_local': 0,
+      });
+
+      await syncProvider.addPendingOperation(
+        operacion: 'crear',
+        entidad: 'club',
+        datos: club.toJson(),
+      );
+
+      // 🔥 CORREGIDO: Usar método público para agregar a la lista
+      final clubProvider = context.read<ClubProvider>();
+      // Recargar la lista para mostrar el nuevo club
+      await clubProvider.loadClubs();
+
+      ok = true;
+    }
+
+    setState(() => _isSaving = false);
+
+    if (ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hasInternet 
+              ? '✅ Club creado exitosamente' 
+              : '📱 Club guardado localmente (se sincronizará automáticamente)',
           ),
-        );
-        await context.read<ClubProvider>().loadClubs();
-        Navigator.pop(context);
-      } else if (mounted) {
-        final errorMsg = context.read<ClubProvider>().errorMessage ?? 'Error al crear el club';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ $errorMsg'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
+          backgroundColor: hasInternet ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      await context.read<ClubProvider>().loadClubs();
+      Navigator.pop(context, true);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Error al crear el club'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

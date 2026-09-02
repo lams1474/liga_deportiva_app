@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")  // La URL va aquí en Prisma 6
+  url      = env("DATABASE_URL")
 }
 
 model Usuario {
@@ -13,7 +13,7 @@ model Usuario {
   nombre       String   @db.VarChar(100)
   correo       String   @unique @db.VarChar(100)
   contrasena   String   @db.VarChar(255)
-  rol          String   // Cambiado: sin @db.Enum, Prisma lo manejará como String
+  rol          String
   created_at   DateTime @default(now()) @db.Timestamp(0)
   updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(0)
   
@@ -37,6 +37,7 @@ model Club {
 
 model Jugador {
   id_jugador       Int      @id @default(autoincrement())
+  cedula           String   @unique @db.VarChar(20)   // 🔥 CORREGIDO: ya no es nullable
   nombre           String   @db.VarChar(100)
   ciudad           String   @db.VarChar(100)
   fecha_nacimiento DateTime @db.Date
@@ -52,7 +53,7 @@ model Jugador {
 
 model Disciplina {
   id_disciplina    Int      @id @default(autoincrement())
-  nombre           String   @unique @db.VarChar(20) // Cambiado: sin @db.Enum
+  nombre           String   @unique @db.VarChar(20)
   created_at       DateTime @default(now()) @db.Timestamp(0)
   updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
   
@@ -73,7 +74,7 @@ model Categoria {
 
 model Temporada {
   id_temporada     Int      @id @default(autoincrement())
-  año              Int      @unique // Cambiado: @db.Year no es necesario
+  año              Int      @unique
   created_at       DateTime @default(now()) @db.Timestamp(0)
   updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
   
@@ -94,7 +95,7 @@ model Arbitro {
 model Partido {
   id_partido          Int      @id @default(autoincrement())
   fecha               DateTime @db.Date
-  hora                String   @db.VarChar(10) // Cambiado: @db.Time a @db.VarChar
+  hora                String   @db.VarChar(10)
   lugar               String   @db.VarChar(200)
   id_categoria        Int
   id_club_local       Int

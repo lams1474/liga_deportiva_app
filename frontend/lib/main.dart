@@ -5,11 +5,16 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/club_provider.dart';
 import 'providers/jugador_provider.dart';
+import 'providers/connectivity_provider.dart';
+import 'providers/sync_provider.dart';
 
 // Services
 import 'services/club_service.dart';
 import 'services/jugador_service.dart';
 import 'services/dio_config.dart';
+
+// Database
+import 'database/app_dao.dart';
 
 // Screens
 import 'screens/auth/login_screen.dart';
@@ -18,17 +23,22 @@ import 'screens/clubes/clubes_screen.dart';
 import 'screens/clubes/crear_club_screen.dart';
 import 'screens/clubes/editar_club_screen.dart';
 import 'screens/jugadores/jugadores_screen.dart';
+import 'screens/jugadores/editar_jugador_screen.dart';
 
 // Theme
 import 'theme/app_theme.dart';
 
+// 🔥 GlobalKey para acceder al contexto desde cualquier lugar
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
+  final appDao = AppDao();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(
           create: (_) {
             final dio = DioConfig.createDioWithInterceptors();
@@ -37,9 +47,16 @@ void main() {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final dio = DioConfig.createDio();
+            final dio = DioConfig.createDioWithInterceptors();
             return JugadorProvider(JugadorService(dio));
           },
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SyncProvider(
+            appDao: appDao,
+            clubProvider: context.read<ClubProvider>(),
+            jugadorProvider: context.read<JugadorProvider>(),
+          ),
         ),
       ],
       child: const LigaDeportivaApp(),
@@ -53,6 +70,7 @@ class LigaDeportivaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // 🔥 Para acceder al contexto desde ConnectivityProvider
       debugShowCheckedModeBanner: false,
       title: 'Liga Deportiva Barrial',
       theme: AppTheme.theme,
@@ -64,6 +82,7 @@ class LigaDeportivaApp extends StatelessWidget {
         '/clubes/crear': (context) => const CrearClubScreen(),
         '/clubes/editar': (context) => const EditarClubScreen(),
         '/jugadores': (context) => const JugadoresScreen(),
+        '/jugadores/editar': (context) => const EditarJugadorScreen(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(

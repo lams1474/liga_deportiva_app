@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/club.dart';
 import '../services/club_service.dart';
+import '../database/app_dao.dart';  
 
 class ClubProvider extends ChangeNotifier {
   final ClubService _service;
@@ -106,5 +107,66 @@ class ClubProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  // ============================================================
+  // 🔥 MÉTODOS DE SINCRONIZACIÓN
+  // ============================================================
+
+  // Sincronización: Crear club desde la cola
+  Future<bool> syncCreateClub(Club club) async {
+    try {
+      final nuevo = await _service.createClub(club);
+      
+      // Verificar si ya existe en la lista local
+      final exists = _clubs.any((c) => c.idClub == nuevo.idClub);
+      if (!exists) {
+        _clubs.add(nuevo);
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      throw Exception('Error syncCreateClub: $e');
+    }
+  }
+
+  // Sincronización: Actualizar club desde la cola
+  Future<bool> syncUpdateClub(Club club) async {
+    try {
+      final actualizado = await _service.updateClub(club.idClub!, club);
+      final index = _clubs.indexWhere((c) => c.idClub == club.idClub);
+      if (index != -1) {
+        _clubs[index] = actualizado;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      throw Exception('Error syncUpdateClub: $e');
+    }
+  }
+
+  // Sincronización: Eliminar club desde la cola
+  Future<bool> syncDeleteClub(int id) async {
+    try {
+      await _service.deleteClub(id);
+      _clubs.removeWhere((c) => c.idClub == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      throw Exception('Error syncDeleteClub: $e');
+    }
+  }
+
+  // Guardar club localmente (sin conexión)
+  Future<void> _saveClubLocal(Club club) async {
+    final db = AppDao();
+    await db.insertarClub({
+      'nombre': club.nombre,
+      'ciudad': club.ciudad,
+      'fecha_fundacion': club.fechaFundacion.toIso8601String().split('T').first,
+      'pendiente_envio': 1,
+      'ultima_sincronizacion': null,
+      'eliminado_local': 0,
+    });
   }
 }

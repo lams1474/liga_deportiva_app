@@ -1,5 +1,6 @@
 class Jugador {
   final int? idJugador;
+  final String cedula;
   final String nombre;
   final String ciudad;
   final DateTime fechaNacimiento;
@@ -8,6 +9,7 @@ class Jugador {
 
   Jugador({
     this.idJugador,
+    required this.cedula,
     required this.nombre,
     required this.ciudad,
     required this.fechaNacimiento,
@@ -18,6 +20,7 @@ class Jugador {
   factory Jugador.fromJson(Map<String, dynamic> json) {
     return Jugador(
       idJugador: json['id_jugador'] as int?,
+      cedula: json['cedula']?.toString() ?? '',
       nombre: json['nombre'] as String,
       ciudad: json['ciudad'] as String,
       fechaNacimiento: DateTime.parse(json['fecha_nacimiento'] as String),
@@ -28,6 +31,7 @@ class Jugador {
 
   Map<String, dynamic> toJson() {
     return {
+      'cedula': cedula,
       'nombre': nombre,
       'ciudad': ciudad,
       'fecha_nacimiento': fechaNacimiento.toIso8601String().split('T').first,
@@ -37,6 +41,7 @@ class Jugador {
 
   Jugador copyWith({
     int? idJugador,
+    String? cedula,
     String? nombre,
     String? ciudad,
     DateTime? fechaNacimiento,
@@ -45,6 +50,7 @@ class Jugador {
   }) {
     return Jugador(
       idJugador: idJugador ?? this.idJugador,
+      cedula: cedula ?? this.cedula,
       nombre: nombre ?? this.nombre,
       ciudad: ciudad ?? this.ciudad,
       fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,

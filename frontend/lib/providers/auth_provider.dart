@@ -22,12 +22,22 @@ class AuthProvider extends ChangeNotifier {
     _loadToken();
   }
 
+  // 🔥 Cargar token desde almacenamiento seguro
   Future<void> _loadToken() async {
-    _token = await _storage.read(key: 'token');
-    print('🔑 Token cargado: ${_token != null ? '✅ Sí' : '❌ No'}');
-    notifyListeners();
+    try {
+      _token = await _storage.read(key: 'token');
+      // Cargar usuario si existe
+      final userJson = await _storage.read(key: 'usuario');
+      if (userJson != null) {
+        // TODO: Parsear usuario desde JSON
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Error al cargar token: $e');
+    }
   }
 
+  // 🔥 Login - guardar token en almacenamiento seguro
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -39,9 +49,10 @@ class AuthProvider extends ChangeNotifier {
       _token = response.token;
       _usuario = response.usuario;
       
-      // Guardar token
+      // Guardar en almacenamiento seguro
       await _storage.write(key: 'token', value: response.token);
-      print('🔑 Token guardado: ${response.token.substring(0, 20)}...');
+      // Guardar usuario como JSON
+      // await _storage.write(key: 'usuario', value: jsonEncode(response.usuario.toJson()));
       
       _isLoading = false;
       notifyListeners();
@@ -54,11 +65,18 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // 🔥 Logout - eliminar todo del almacenamiento seguro
   Future<void> logout() async {
     await _storage.delete(key: 'token');
+    await _storage.delete(key: 'usuario');
     _token = null;
     _usuario = null;
     notifyListeners();
+  }
+
+  // 🔥 Obtener token para las peticiones
+  Future<String?> getToken() async {
+    return await _storage.read(key: 'token');
   }
 
   void clearError() {
