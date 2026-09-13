@@ -1,7 +1,16 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'club.g.dart';
+
+@JsonSerializable()
 class Club {
+  @JsonKey(name: 'id_club', includeToJson: false)  // 🔥 NO incluir en toJson
   final int? idClub;
+
   final String nombre;
   final String ciudad;
+
+  @JsonKey(name: 'fecha_fundacion')
   final DateTime fechaFundacion;
 
   Club({
@@ -11,22 +20,8 @@ class Club {
     required this.fechaFundacion,
   });
 
-  factory Club.fromJson(Map<String, dynamic> json) {
-    return Club(
-      idClub: json['id_club'] as int?,
-      nombre: json['nombre'] as String,
-      ciudad: json['ciudad'] as String,
-      fechaFundacion: DateTime.parse(json['fecha_fundacion'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nombre': nombre,
-      'ciudad': ciudad,
-      'fecha_fundacion': fechaFundacion.toIso8601String().split('T').first, // Formato YYYY-MM-DD
-    };
-  }
+  factory Club.fromJson(Map<String, dynamic> json) => _$ClubFromJson(json);
+  Map<String, dynamic> toJson() => _$ClubToJson(this);
 
   Club copyWith({
     int? idClub,

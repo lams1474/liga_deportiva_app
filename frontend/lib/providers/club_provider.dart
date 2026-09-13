@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/club.dart';
 import '../services/club_service.dart';
-import '../database/app_dao.dart';  
+import '../database/app_dao.dart';
 
 class ClubProvider extends ChangeNotifier {
   final ClubService _service;
@@ -16,6 +16,10 @@ class ClubProvider extends ChangeNotifier {
 
   ClubProvider(this._service);
 
+  // ============================================================
+  // OPERACIONES CRUD
+  // ============================================================
+
   Future<void> loadClubs() async {
     _isLoading = true;
     _errorMessage = null;
@@ -24,7 +28,7 @@ class ClubProvider extends ChangeNotifier {
     try {
       _clubs = await _service.getClubs();
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -43,7 +47,7 @@ class ClubProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -68,7 +72,7 @@ class ClubProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -89,7 +93,7 @@ class ClubProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -110,15 +114,13 @@ class ClubProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // 🔥 MÉTODOS DE SINCRONIZACIÓN
+  // 🔥 MÉTODOS DE SINCRONIZACIÓN (restaurados)
   // ============================================================
 
-  // Sincronización: Crear club desde la cola
   Future<bool> syncCreateClub(Club club) async {
     try {
       final nuevo = await _service.createClub(club);
-      
-      // Verificar si ya existe en la lista local
+
       final exists = _clubs.any((c) => c.idClub == nuevo.idClub);
       if (!exists) {
         _clubs.add(nuevo);
@@ -130,7 +132,6 @@ class ClubProvider extends ChangeNotifier {
     }
   }
 
-  // Sincronización: Actualizar club desde la cola
   Future<bool> syncUpdateClub(Club club) async {
     try {
       final actualizado = await _service.updateClub(club.idClub!, club);
@@ -145,7 +146,6 @@ class ClubProvider extends ChangeNotifier {
     }
   }
 
-  // Sincronización: Eliminar club desde la cola
   Future<bool> syncDeleteClub(int id) async {
     try {
       await _service.deleteClub(id);
@@ -158,7 +158,7 @@ class ClubProvider extends ChangeNotifier {
   }
 
   // Guardar club localmente (sin conexión)
-  Future<void> _saveClubLocal(Club club) async {
+  Future<void> saveClubLocal(Club club) async {
     final db = AppDao();
     await db.insertarClub({
       'nombre': club.nombre,

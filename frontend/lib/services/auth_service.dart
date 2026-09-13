@@ -5,26 +5,24 @@ import 'dio_config.dart';
 class AuthService {
   final Dio _dio;
 
-  AuthService() : _dio = DioConfig.createDioWithInterceptors();
+  // 🔥 CORREGIDO: El login NO usa interceptores (no hay token aún)
+  AuthService() : _dio = DioConfig.createDio();
 
   Future<LoginResponse> login(String email, String password) async {
     try {
       print('🔑 Intentando login con: $email');
-      
-      // 🔥 TU BACKEND ESPERA "correo" y "contrasena" 🔥
+
+      // El backend espera "correo" y "contrasena"
       final data = {
-        'correo': email,        // ← ¡CORREGIDO! antes era 'email'
-        'contrasena': password, // ← ¡CORREGIDO! antes era 'password'
+        'correo': email,
+        'contrasena': password,
       };
-      
+
       print('📦 Enviando data: $data');
 
       final response = await _dio.post(
         '/auth/login',
         data: data,
-        options: Options(
-          validateStatus: (status) => status! < 500,
-        ),
       );
 
       print('📥 Status: ${response.statusCode}');
@@ -48,7 +46,7 @@ class AuthService {
         print('❌ Status: ${e.response?.statusCode}');
         print('❌ Data: ${e.response?.data}');
       }
-      
+
       if (e.response?.statusCode == 401) {
         throw Exception('Credenciales incorrectas');
       } else if (e.type == DioExceptionType.connectionTimeout) {

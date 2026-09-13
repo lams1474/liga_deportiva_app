@@ -18,6 +18,7 @@ class _JugadoresScreenState extends State<JugadoresScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final authProvider = context.read<AuthProvider>();
       if (authProvider.isAuthenticated) {
         context.read<JugadorProvider>().loadJugadores();
@@ -113,15 +114,14 @@ class _JugadoresScreenState extends State<JugadoresScreen> {
                         final jugador = jugadorProvider.jugadores[index];
                         return JugadorCard(
                           jugador: jugador,
-                          onTap: () {
-                            // Navegar a detalle (opcional)
-                          },
+                          onTap: () {},
                           onEdit: () {
                             Navigator.pushNamed(
                               context,
                               '/jugadores/editar',
                               arguments: jugador.idJugador,
                             ).then((result) {
+                              // 🔥 Verificar mounted antes de usar context
                               if (result == true && mounted) {
                                 context.read<JugadorProvider>().loadJugadores();
                               }
@@ -155,7 +155,9 @@ class _JugadoresScreenState extends State<JugadoresScreen> {
         ),
         child: FormularioJugador(
           onSuccess: () {
-            context.read<JugadorProvider>().loadJugadores();
+            if (mounted) {
+              context.read<JugadorProvider>().loadJugadores();
+            }
           },
         ),
       ),
@@ -176,8 +178,9 @@ class _JugadoresScreenState extends State<JugadoresScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // 🔥 CORREGIDO: solo se pasa el ID
-              context.read<JugadorProvider>().deleteJugador(jugador.idJugador!);
+              if (mounted) {
+                context.read<JugadorProvider>().deleteJugador(jugador.idJugador!);
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,

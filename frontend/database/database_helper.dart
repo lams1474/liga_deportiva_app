@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;  // 🔥 AGREGAR ESTE IMPORT
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
@@ -28,8 +29,8 @@ class DatabaseHelper {
     }
 
     // En móvil/desktop, usar archivo físico
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'liga_deportiva.db');
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, 'liga_deportiva.db');
     return await openDatabase(
       path,
       version: 1,

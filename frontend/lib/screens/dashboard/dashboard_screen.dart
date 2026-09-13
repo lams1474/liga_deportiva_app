@@ -2,13 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 🔥 Verificar autenticación al cargar Dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      if (!authProvider.isAuthenticated) {
+        print('⚠️ No hay token en Dashboard, redirigiendo a login');
+        Navigator.pushReplacementNamed(context, '/');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final theme = Theme.of(context);
+
+    // 🔥 Si no está autenticado, mostrar carga mientras redirige
+    if (!authProvider.isAuthenticated) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Verificando sesión...'),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -49,7 +83,6 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // 🔥 CORREGIDO: Usar Expanded para que ocupe el espacio disponible
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 2,
@@ -75,7 +108,6 @@ class DashboardScreen extends StatelessWidget {
                         Navigator.pushNamed(context, '/jugadores');
                       },
                     ),
-                    // 🔥 Puedes agregar más módulos aquí
                     _buildModuleCard(
                       context,
                       icon: Icons.sports_baseball,

@@ -1,11 +1,27 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'jugador.g.dart';
+
+@JsonSerializable()
 class Jugador {
+  @JsonKey(name: 'id_jugador', includeToJson: false)  // 🔥 NO incluir en toJson
   final int? idJugador;
+
   final String cedula;
   final String nombre;
   final String ciudad;
+
+  @JsonKey(name: 'fecha_nacimiento')
   final DateTime fechaNacimiento;
+
+  @JsonKey(name: 'id_club')
   final int idClub;
-  final String? nombreClub;
+
+  @JsonKey(name: 'club', includeToJson: false)  // 🔥 NO incluir en toJson
+  final Map<String, dynamic>? clubData;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String? get nombreClub => clubData?['nombre'] as String?;
 
   Jugador({
     this.idJugador,
@@ -14,30 +30,11 @@ class Jugador {
     required this.ciudad,
     required this.fechaNacimiento,
     required this.idClub,
-    this.nombreClub,
+    this.clubData,
   });
 
-  factory Jugador.fromJson(Map<String, dynamic> json) {
-    return Jugador(
-      idJugador: json['id_jugador'] as int?,
-      cedula: json['cedula']?.toString() ?? '',
-      nombre: json['nombre'] as String,
-      ciudad: json['ciudad'] as String,
-      fechaNacimiento: DateTime.parse(json['fecha_nacimiento'] as String),
-      idClub: json['id_club'] as int,
-      nombreClub: json['club']?['nombre'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'cedula': cedula,
-      'nombre': nombre,
-      'ciudad': ciudad,
-      'fecha_nacimiento': fechaNacimiento.toIso8601String().split('T').first,
-      'id_club': idClub,
-    };
-  }
+  factory Jugador.fromJson(Map<String, dynamic> json) => _$JugadorFromJson(json);
+  Map<String, dynamic> toJson() => _$JugadorToJson(this);
 
   Jugador copyWith({
     int? idJugador,
@@ -46,7 +43,7 @@ class Jugador {
     String? ciudad,
     DateTime? fechaNacimiento,
     int? idClub,
-    String? nombreClub,
+    Map<String, dynamic>? clubData,
   }) {
     return Jugador(
       idJugador: idJugador ?? this.idJugador,
@@ -55,7 +52,7 @@ class Jugador {
       ciudad: ciudad ?? this.ciudad,
       fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
       idClub: idClub ?? this.idClub,
-      nombreClub: nombreClub ?? this.nombreClub,
+      clubData: clubData ?? this.clubData,
     );
   }
 }

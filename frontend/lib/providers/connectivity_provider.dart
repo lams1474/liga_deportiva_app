@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';  // 🔥 AGREGAR ESTE IMPORT
+import 'package:provider/provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/connectivity_service.dart';
 import 'sync_provider.dart';
-import '../main.dart';
+import '../app_global.dart';  // 🔥 IMPORTAR EL NAVIGATORKEY
 
 class ConnectivityProvider extends ChangeNotifier {
   final ConnectivityService _service = ConnectivityService();
@@ -38,9 +38,9 @@ class ConnectivityProvider extends ChangeNotifier {
 
   Future<void> _syncPendingOperations() async {
     try {
+      // 🔥 Usar navigatorKey de app_global.dart
       final context = navigatorKey.currentContext;
       if (context != null) {
-        // 🔥 CORREGIDO: Provider.of ya está disponible
         final syncProvider = Provider.of<SyncProvider>(context, listen: false);
         await syncProvider.syncNow();
         print('🔄 Sincronización automática ejecutada');

@@ -246,16 +246,6 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     if (!_formKey.currentState!.validate()) return;
     if (_clubSeleccionado == null) return;
 
-    final provider = context.read<JugadorProvider>();
-    final existe = provider.jugadores.any(
-      (j) => j.cedula == _cedulaController.text.trim() && j.idClub == _clubSeleccionado
-    );
-
-    if (existe) {
-      setState(() => _existeJugador = true);
-      return;
-    }
-
     setState(() {
       _isSaving = true;
       _existeJugador = false;
@@ -270,63 +260,74 @@ class _FormularioJugadorState extends State<FormularioJugador> {
       idClub: _clubSeleccionado!,
     );
 
+    // 🔥 Obtener providers ANTES de operaciones asíncronas
+    final provider = context.read<JugadorProvider>();
     final connectivityProvider = context.read<ConnectivityProvider>();
+    final syncProvider = context.read<SyncProvider>();
+
     final hasInternet = connectivityProvider.hasInternet;
 
-    bool success;
+    bool success = false;
+    String? errorMensaje;
 
-    if (hasInternet) {
-      if (widget.jugador == null) {
-        success = await provider.createJugador(jugador);
+    try {
+      if (hasInternet) {
+        if (widget.jugador == null) {
+          success = await provider.createJugador(jugador);
+        } else {
+          success = await provider.updateJugador(widget.jugador!.idJugador!, jugador);
+        }
+        errorMensaje = provider.errorMessage;
       } else {
-        success = await provider.updateJugador(widget.jugador!.idJugador!, jugador);
+        final db = AppDao();
+
+        await db.insertarJugador({
+          'cedula': jugador.cedula,
+          'nombre': jugador.nombre,
+          'ciudad': jugador.ciudad,
+          'fecha_nacimiento': jugador.fechaNacimiento.toIso8601String().split('T').first,
+          'id_club': jugador.idClub,
+          'pendiente_envio': 1,
+          'ultima_sincronizacion': null,
+          'eliminado_local': 0,
+        });
+
+        await syncProvider.addPendingOperation(
+          operacion: widget.jugador == null ? 'crear' : 'actualizar',
+          entidad: 'jugador',
+          datos: jugador.toJson(),
+        );
+
+        await provider.loadJugadores();
+
+        success = true;
       }
-    } else {
-      final syncProvider = context.read<SyncProvider>();
-      final db = AppDao();
-      
-      await db.insertarJugador({
-        'cedula': jugador.cedula,
-        'nombre': jugador.nombre,
-        'ciudad': jugador.ciudad,
-        'fecha_nacimiento': jugador.fechaNacimiento.toIso8601String().split('T').first,
-        'id_club': jugador.idClub,
-        'pendiente_envio': 1,
-        'ultima_sincronizacion': null,
-        'eliminado_local': 0,
-      });
-
-      await syncProvider.addPendingOperation(
-        operacion: widget.jugador == null ? 'crear' : 'actualizar',
-        entidad: 'jugador',
-        datos: jugador.toJson(),
-      );
-
-      // 🔥 CORREGIDO: Recargar la lista para mostrar el nuevo jugador
-      await provider.loadJugadores();
-
-      success = true;
+    } catch (e) {
+      success = false;
+      errorMensaje = e.toString();
     }
+
+    if (!mounted) return;
 
     setState(() => _isSaving = false);
 
-    if (success && mounted) {
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            hasInternet 
-              ? '✅ Jugador guardado exitosamente' 
-              : '📱 Jugador guardado localmente (se sincronizará automáticamente)',
+            hasInternet
+                ? '✅ Jugador guardado exitosamente'
+                : '📱 Jugador guardado localmente (se sincronizará automáticamente)',
           ),
           backgroundColor: hasInternet ? Colors.green : Colors.orange,
         ),
       );
       widget.onSuccess?.call();
       Navigator.pop(context, true);
-    } else if (mounted) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(provider.errorMessage ?? 'Error al guardar'),
+          content: Text(errorMensaje ?? 'Error al guardar'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

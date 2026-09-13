@@ -49,4 +49,36 @@ router.post(
     (req, res) => controller.login(req, res)
 );
 
+/**
+ * @openapi
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Renovar token de acceso
+ *     description: Genera un nuevo token de acceso usando un refresh token válido.
+ *     tags: [Autenticación]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *     responses:
+ *       200:
+ *         description: Token renovado exitosamente
+ *       400:
+ *         description: Refresh token requerido
+ *       401:
+ *         description: Refresh token inválido o expirado
+ */
+router.post(
+    "/refresh",
+    (req, res) => controller.refresh(req, res)
+);
+
 export default router;

@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'package:sqflite/sqflite.dart';
 
-// Providers
 import 'providers/auth_provider.dart';
 import 'providers/club_provider.dart';
 import 'providers/jugador_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/sync_provider.dart';
 
-// Services
 import 'services/club_service.dart';
 import 'services/jugador_service.dart';
 import 'services/dio_config.dart';
 
-// Database
 import 'database/app_dao.dart';
 
-// Screens
 import 'screens/auth/login_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/clubes/clubes_screen.dart';
@@ -25,13 +24,19 @@ import 'screens/clubes/editar_club_screen.dart';
 import 'screens/jugadores/jugadores_screen.dart';
 import 'screens/jugadores/editar_jugador_screen.dart';
 
-// Theme
 import 'theme/app_theme.dart';
+import 'app_global.dart';
 
-// 🔥 GlobalKey para acceder al contexto desde cualquier lugar
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+void main() async {
+  // 🔥 Inicializar binding antes de cualquier operación asíncrona
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  // 🔥 Configurar sqflite para web
+  if (kIsWeb) {
+    databaseFactory = databaseFactoryFfiWeb;
+    print('✅ sqflite configurado para web');
+  }
+
   final appDao = AppDao();
 
   runApp(
@@ -41,7 +46,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(
           create: (_) {
-            final dio = DioConfig.createDioWithInterceptors();
+            final dio = DioConfig.instance;
             return ClubProvider(ClubService(dio));
           },
         ),
@@ -70,7 +75,7 @@ class LigaDeportivaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey, // 🔥 Para acceder al contexto desde ConnectivityProvider
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Liga Deportiva Barrial',
       theme: AppTheme.theme,

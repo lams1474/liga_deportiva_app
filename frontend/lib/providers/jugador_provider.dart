@@ -24,7 +24,8 @@ class JugadorProvider extends ChangeNotifier {
     try {
       _jugadores = await _service.getJugadores();
     } catch (e) {
-      _errorMessage = e.toString();
+      // 🔥 Quitar el prefijo "Exception: "
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -43,7 +44,7 @@ class JugadorProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -65,14 +66,14 @@ class JugadorProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      // 🔥 Quitar el prefijo "Exception: "
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  // 🔥 CORREGIDO: deleteJugador ahora realmente elimina
   Future<bool> deleteJugador(int id) async {
     _isLoading = true;
     _errorMessage = null;
@@ -85,7 +86,8 @@ class JugadorProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      // 🔥 Quitar el prefijo "Exception: "
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -105,16 +107,14 @@ class JugadorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-    // ============================================================
+  // ============================================================
   // 🔥 MÉTODOS DE SINCRONIZACIÓN
   // ============================================================
 
-  // Sincronización: Crear jugador desde la cola
   Future<bool> syncCreateJugador(Jugador jugador) async {
     try {
       final nuevo = await _service.createJugador(jugador);
-      
-      // Verificar si ya existe en la lista local
+
       final exists = _jugadores.any((j) => j.idJugador == nuevo.idJugador);
       if (!exists) {
         _jugadores.add(nuevo);
@@ -126,7 +126,6 @@ class JugadorProvider extends ChangeNotifier {
     }
   }
 
-  // Sincronización: Actualizar jugador desde la cola
   Future<bool> syncUpdateJugador(Jugador jugador) async {
     try {
       final actualizado = await _service.updateJugador(jugador.idJugador!, jugador);
@@ -141,7 +140,6 @@ class JugadorProvider extends ChangeNotifier {
     }
   }
 
-  // Sincronización: Eliminar jugador desde la cola
   Future<bool> syncDeleteJugador(int id) async {
     try {
       await _service.deleteJugador(id);
@@ -151,20 +149,5 @@ class JugadorProvider extends ChangeNotifier {
     } catch (e) {
       throw Exception('Error syncDeleteJugador: $e');
     }
-  }
-
-  // Guardar jugador localmente (sin conexión)
-  Future<void> _saveJugadorLocal(Jugador jugador) async {
-    final db = AppDao();
-    await db.insertarJugador({
-      'cedula': jugador.cedula,
-      'nombre': jugador.nombre,
-      'ciudad': jugador.ciudad,
-      'fecha_nacimiento': jugador.fechaNacimiento.toIso8601String().split('T').first,
-      'id_club': jugador.idClub,
-      'pendiente_envio': 1,
-      'ultima_sincronizacion': null,
-      'eliminado_local': 0,
-    });
   }
 }

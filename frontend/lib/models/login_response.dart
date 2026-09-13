@@ -1,31 +1,25 @@
+import 'package:json_annotation/json_annotation.dart';
 import 'usuario.dart';
 
+part 'login_response.g.dart';
+
+@JsonSerializable()
 class LoginResponse {
   final String mensaje;
   final String token;
+  final String? refreshToken;
   final Usuario usuario;
 
   LoginResponse({
     required this.mensaje,
     required this.token,
+    this.refreshToken,
     required this.usuario,
   });
 
-  factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    print('📦 Parseando LoginResponse: $json'); // Log para depurar
-    
-    return LoginResponse(
-      mensaje: json["mensaje"] ?? '',
-      token: json["token"] ?? '',
-      usuario: Usuario.fromJson(json["usuario"] ?? {}),
-    );
-  }
+  // 🔥 Generado automáticamente
+  factory LoginResponse.fromJson(Map<String, dynamic> json) =>
+      _$LoginResponseFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'mensaje': mensaje,
-      'token': token,
-      'usuario': usuario.toJson(),
-    };
-  }
+  Map<String, dynamic> toJson() => _$LoginResponseToJson(this);
 }
