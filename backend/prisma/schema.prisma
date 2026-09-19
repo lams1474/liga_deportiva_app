@@ -49,6 +49,7 @@ model Jugador {
   disciplinas      JugadorDisciplina[]
 
   @@index([id_club])
+  foto_path String? @db.VarChar(500)
 }
 
 model Disciplina {

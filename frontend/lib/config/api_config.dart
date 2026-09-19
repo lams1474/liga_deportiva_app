@@ -1,6 +1,6 @@
 class ApiConfig {
   // 🔥 Valores por defecto para desarrollo local
-  static const String _defaultApiUrl = 'http://localhost:3000/api';
+  static const String _defaultApiUrl = 'http://192.168.1.6:3000/api';
   static const String _defaultEnvironment = 'dev';
 
   // 🔥 Configuración desde --dart-define

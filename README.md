@@ -635,29 +635,6 @@ Se implementaron funcionalidades avanzadas como:
 La documentación permite identificar las herramientas, versiones, comandos y configuraciones principales utilizadas durante el desarrollo.
 
 ---
----
-
-## 23. Interceptores de Dio (Semana 13)
-
-Se implementaron **4 interceptores** en el siguiente orden:
-
-| # | Interceptor | Momento | Responsabilidad |
-|---|-------------|---------|-----------------|
-| 1 | `AuthInterceptor` | Antes de enviar | Inyecta el token JWT en el header `Authorization` |
-| 2 | `RefreshInterceptor` | Ante un 401 | Renueva el token y reintenta la petición |
-| 3 | `LogInterceptor` | Antes/después | Registra peticiones (solo en desarrollo) |
-| 4 | `ErrorInterceptor` | Ante un error | Traduce errores a mensajes del dominio |
-
-### Flujo de renovación de token
-
-```text
-1. Petición → 401 (token expirado)
-2. RefreshInterceptor detecta el 401
-3. Solicita nuevo token a POST /auth/refresh
-4. Guarda el nuevo token
-5. Reintenta la petición original
-6. Si el refresh falla → cierra sesión
-
 
 ## 📝 Autor
 

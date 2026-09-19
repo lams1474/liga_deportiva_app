@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
 import '../../models/club.dart';
+import '../../services/permission_service.dart';
 
 class EditarClubScreen extends StatefulWidget {
   const EditarClubScreen({super.key});
@@ -21,10 +23,15 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
   String? _errorMessage;
   bool _datosCargados = false;
 
+  // 🔥 NUEVO: Campos de ubicación
+  double? _latitud;
+  double? _longitud;
+  String? _precisionUbicacion;
+  bool _cargandoUbicacion = false;
+
   @override
   void initState() {
     super.initState();
-    // Inicializar fecha por defecto
     _fechaFundacion = DateTime.now();
     _clubId = 0;
   }
@@ -32,7 +39,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 🔥 CORREGIDO: Cargar los datos aquí, después de que el contexto esté listo
     if (!_datosCargados) {
       _cargarClub();
     }
@@ -47,9 +53,8 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
 
   Future<void> _cargarClub() async {
     try {
-      // Obtener el ID de los argumentos de la ruta
       final args = ModalRoute.of(context)?.settings.arguments;
-      
+
       if (args == null) {
         setState(() {
           _errorMessage = 'No se recibió el ID del club';
@@ -59,7 +64,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         return;
       }
 
-      // Verificar que el argumento sea un int
       if (args is! int) {
         setState(() {
           _errorMessage = 'El ID del club no es válido';
@@ -70,30 +74,32 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
       }
 
       _clubId = args;
-      
-      // 🔥 CORREGIDO: Primero cargar la lista de clubes si está vacía
+
       final provider = context.read<ClubProvider>();
-      
-      // Si la lista está vacía, cargar los clubes primero
+
       if (provider.clubs.isEmpty) {
         await provider.loadClubs();
       }
-      
-      // Buscar el club en el provider
+
       final club = provider.getClubById(_clubId);
-      
+
       if (club != null) {
         _nombreController.text = club.nombre;
         _ciudadController.text = club.ciudad;
         _fechaFundacion = club.fechaFundacion;
+        _latitud = club.latitud;                  // 🔥 NUEVO
+        _longitud = club.longitud;                // 🔥 NUEVO
+        _precisionUbicacion = club.precisionUbicacion; // 🔥 NUEVO
       } else {
-        // Si no está en la lista, intentar cargar todos los clubes y buscar de nuevo
         await provider.loadClubs();
         final clubReloaded = provider.getClubById(_clubId);
         if (clubReloaded != null) {
           _nombreController.text = clubReloaded.nombre;
           _ciudadController.text = clubReloaded.ciudad;
           _fechaFundacion = clubReloaded.fechaFundacion;
+          _latitud = clubReloaded.latitud;                  // 🔥 NUEVO
+          _longitud = clubReloaded.longitud;                // 🔥 NUEVO
+          _precisionUbicacion = clubReloaded.precisionUbicacion; // 🔥 NUEVO
         } else {
           setState(() {
             _errorMessage = 'Club no encontrado';
@@ -110,6 +116,62 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
           _isLoading = false;
           _datosCargados = true;
         });
+      }
+    }
+  }
+
+  // 🔥 NUEVO: Obtener ubicación del club
+  Future<void> _obtenerUbicacion() async {
+    final ok = await PermissionService.solicitarUbicacion(context);
+    if (!ok) return;
+
+    setState(() => _cargandoUbicacion = true);
+
+    try {
+      final servicioActivo = await Geolocator.isLocationServiceEnabled();
+      if (!servicioActivo) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('El servicio de ubicación está desactivado. Actívelo en los ajustes del dispositivo.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        setState(() => _cargandoUbicacion = false);
+        return;
+      }
+
+      final posicion = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final precision = posicion.accuracy < 100 ? 'precisa' : 'aproximada';
+
+      setState(() {
+        _latitud = posicion.latitude;
+        _longitud = posicion.longitude;
+        _precisionUbicacion = precision;
+        _cargandoUbicacion = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 Ubicación obtenida ($precision)'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _cargandoUbicacion = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al obtener ubicación: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -206,76 +268,126 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del club',
-                  prefixIcon: Icon(Icons.sports),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'El nombre es obligatorio';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _ciudadController,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad',
-                  prefixIcon: Icon(Icons.location_city),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La ciudad es obligatoria';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _seleccionarFecha,
-                child: InputDecorator(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _nombreController,
                   decoration: const InputDecoration(
-                    labelText: 'Fecha de fundación',
-                    prefixIcon: Icon(Icons.calendar_today),
+                    labelText: 'Nombre del club',
+                    prefixIcon: Icon(Icons.sports),
                   ),
-                  child: Text(
-                    '${_fechaFundacion.day}/${_fechaFundacion.month}/${_fechaFundacion.year}',
-                    style: theme.textTheme.bodyMedium,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'El nombre es obligatorio';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _ciudadController,
+                  decoration: const InputDecoration(
+                    labelText: 'Ciudad',
+                    prefixIcon: Icon(Icons.location_city),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'La ciudad es obligatoria';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: _seleccionarFecha,
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Fecha de fundación',
+                      prefixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      '${_fechaFundacion.day}/${_fechaFundacion.month}/${_fechaFundacion.year}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade300,
-                        foregroundColor: Colors.black,
-                      ),
-                      child: const Text('Cancelar'),
+                const SizedBox(height: 16),
+
+                // 🔥 NUEVO: Sección de ubicación
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _latitud == null
+                                    ? 'Sin ubicación registrada'
+                                    : 'Lat: ${_latitud!.toStringAsFixed(6)}\n'
+                                      'Lng: ${_longitud!.toStringAsFixed(6)}\n'
+                                      'Precisión: $_precisionUbicacion',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _cargandoUbicacion ? null : _obtenerUbicacion,
+                            icon: _cargandoUbicacion
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.my_location),
+                            label: Text(
+                              _cargandoUbicacion
+                                  ? 'Obteniendo...'
+                                  : 'Obtener ubicación',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _guardar,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
+                ),
+
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          foregroundColor: Colors.black,
+                        ),
+                        child: const Text('Cancelar'),
                       ),
-                      child: Text(_isSaving ? 'Guardando...' : 'Guardar'),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _guardar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(_isSaving ? 'Guardando...' : 'Guardar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -307,6 +419,9 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         nombre: _nombreController.text.trim(),
         ciudad: _ciudadController.text.trim(),
         fechaFundacion: _fechaFundacion,
+        latitud: _latitud,                      // 🔥 NUEVO
+        longitud: _longitud,                    // 🔥 NUEVO
+        precisionUbicacion: _precisionUbicacion,// 🔥 NUEVO
       );
 
       final ok = await context.read<ClubProvider>().actualizarClub(_clubId, club);
@@ -320,10 +435,9 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Recargar la lista y volver
         await context.read<ClubProvider>().loadClubs();
         if (mounted) {
-          Navigator.pop(context, true); // true indica que hubo cambios
+          Navigator.pop(context, true);
         }
       } else if (mounted) {
         final errorMsg = context.read<ClubProvider>().errorMessage ?? 'Error al actualizar el club';

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../../models/club.dart';
 import '../../database/app_dao.dart';
+import '../../services/permission_service.dart';
 
 class CrearClubScreen extends StatefulWidget {
   const CrearClubScreen({super.key});
@@ -20,6 +22,12 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
   late DateTime _fechaFundacion;
   bool _isSaving = false;
 
+  // NUEVO: Campos de ubicación
+  double? _latitud;
+  double? _longitud;
+  String? _precisionUbicacion;
+  bool _cargandoUbicacion = false;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +39,66 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
     _nombreController.dispose();
     _ciudadController.dispose();
     super.dispose();
+  }
+
+  // NUEVO: Obtener ubicación del club
+  Future<void> _obtenerUbicacion() async {
+    // 1. Solicitar permiso con explicación previa
+    final ok = await PermissionService.solicitarUbicacion(context);
+    if (!ok) return;
+
+    setState(() => _cargandoUbicacion = true);
+
+    try {
+      // 2. Verificar que el servicio de ubicación esté activo
+      final servicioActivo = await Geolocator.isLocationServiceEnabled();
+      if (!servicioActivo) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('El servicio de ubicación está desactivado. Actívelo en los ajustes del dispositivo.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        setState(() => _cargandoUbicacion = false);
+        return;
+      }
+
+      // 3. Obtener la posición actual
+      final posicion = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // 4. Determinar si es precisa o aproximada
+      final precision = posicion.accuracy < 100 ? 'precisa' : 'aproximada';
+
+      setState(() {
+        _latitud = posicion.latitude;
+        _longitud = posicion.longitude;
+        _precisionUbicacion = precision;
+        _cargandoUbicacion = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 Ubicación obtenida ($precision)'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _cargandoUbicacion = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al obtener ubicación: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -90,6 +158,54 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // NUEVO: Sección de ubicación
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _latitud == null
+                                  ? 'Sin ubicación registrada'
+                                  : 'Lat: ${_latitud!.toStringAsFixed(6)}\n'
+                                    'Lng: ${_longitud!.toStringAsFixed(6)}\n'
+                                    'Precisión: $_precisionUbicacion',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _cargandoUbicacion ? null : _obtenerUbicacion,
+                          icon: _cargandoUbicacion
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.my_location),
+                          label: Text(
+                            _cargandoUbicacion
+                                ? 'Obteniendo...'
+                                : 'Obtener ubicación',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -146,6 +262,9 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
       nombre: _nombreController.text.trim(),
       ciudad: _ciudadController.text.trim(),
       fechaFundacion: _fechaFundacion,
+      latitud: _latitud,                      // NUEVO
+      longitud: _longitud,                    // NUEVO
+      precisionUbicacion: _precisionUbicacion,// NUEVO
     );
 
     final connectivityProvider = context.read<ConnectivityProvider>();
@@ -157,12 +276,15 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
       ok = await context.read<ClubProvider>().crearClub(club);
     } else {
       final syncProvider = context.read<SyncProvider>();
-      
+
       final db = AppDao();
       await db.insertarClub({
         'nombre': club.nombre,
         'ciudad': club.ciudad,
         'fecha_fundacion': club.fechaFundacion.toIso8601String().split('T').first,
+        'latitud': club.latitud,                     // NUEVO
+        'longitud': club.longitud,                   // NUEVO
+        'precision_ubicacion': club.precisionUbicacion, // NUEVO
         'pendiente_envio': 1,
         'ultima_sincronizacion': null,
         'eliminado_local': 0,
@@ -174,9 +296,7 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
         datos: club.toJson(),
       );
 
-      // 🔥 CORREGIDO: Usar método público para agregar a la lista
       final clubProvider = context.read<ClubProvider>();
-      // Recargar la lista para mostrar el nuevo club
       await clubProvider.loadClubs();
 
       ok = true;
@@ -188,9 +308,9 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            hasInternet 
-              ? '✅ Club creado exitosamente' 
-              : '📱 Club guardado localmente (se sincronizará automáticamente)',
+            hasInternet
+                ? '✅ Club creado exitosamente'
+                : '📱 Club guardado localmente (se sincronizará automáticamente)',
           ),
           backgroundColor: hasInternet ? Colors.green : Colors.orange,
           duration: const Duration(seconds: 3),

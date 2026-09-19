@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/jugador.dart';
 import '../providers/jugador_provider.dart';
@@ -6,6 +9,8 @@ import '../providers/club_provider.dart';
 import '../providers/connectivity_provider.dart';
 import '../providers/sync_provider.dart';
 import '../database/app_dao.dart';
+import '../services/permission_service.dart';
+import '../services/foto_service.dart';  // 🔥 NUEVO
 
 class FormularioJugador extends StatefulWidget {
   final Jugador? jugador;
@@ -30,6 +35,7 @@ class _FormularioJugadorState extends State<FormularioJugador> {
   late int? _clubSeleccionado;
   bool _isSaving = false;
   bool _existeJugador = false;
+  String? _fotoPath;
 
   @override
   void initState() {
@@ -40,9 +46,11 @@ class _FormularioJugadorState extends State<FormularioJugador> {
       _ciudadController.text = widget.jugador!.ciudad;
       _fechaNacimiento = widget.jugador!.fechaNacimiento;
       _clubSeleccionado = widget.jugador!.idClub;
+      _fotoPath = widget.jugador!.fotoPath;
     } else {
       _fechaNacimiento = DateTime.now().subtract(const Duration(days: 365 * 18));
       _clubSeleccionado = null;
+      _fotoPath = null;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,6 +67,49 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     _nombreController.dispose();
     _ciudadController.dispose();
     super.dispose();
+  }
+
+  // 🔥 Tomar foto con la cámara
+  Future<void> _tomarFoto() async {
+    final ok = await PermissionService.solicitarCamara(context);
+    if (!ok) return;
+
+    final picker = ImagePicker();
+    final XFile? foto = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 80,
+    );
+
+    if (foto != null) {
+      // 🔥 Copiar la foto a un directorio permanente
+      final rutaPermanente = await FotoService.guardarFotoPermanente(foto.path);
+
+      if (rutaPermanente != null) {
+        setState(() {
+          _fotoPath = rutaPermanente;
+        });
+      }
+    }
+  }
+
+  // 🔥 Escoger foto existente
+  Future<void> _escogerFoto() async {
+    final picker = ImagePicker();
+    final XFile? foto = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (foto != null) {
+      // 🔥 Copiar la foto a un directorio permanente
+      final rutaPermanente = await FotoService.guardarFotoPermanente(foto.path);
+
+      if (rutaPermanente != null) {
+        setState(() {
+          _fotoPath = rutaPermanente;
+        });
+      }
+    }
   }
 
   @override
@@ -85,6 +136,47 @@ class _FormularioJugadorState extends State<FormularioJugador> {
               key: _formKey,
               child: Column(
                 children: [
+                  // 🔥 Foto del jugador
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            shape: BoxShape.circle,
+                            image: _fotoPath != null && !kIsWeb
+                                ? DecorationImage(
+                                    image: FileImage(File(_fotoPath!)),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: _fotoPath == null
+                              ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _tomarFoto,
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text('Tomar foto'),
+                            ),
+                            TextButton.icon(
+                              onPressed: _escogerFoto,
+                              icon: const Icon(Icons.photo_library),
+                              label: const Text('Escoger'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _cedulaController,
                     decoration: const InputDecoration(
@@ -258,9 +350,9 @@ class _FormularioJugadorState extends State<FormularioJugador> {
       ciudad: _ciudadController.text.trim(),
       fechaNacimiento: _fechaNacimiento,
       idClub: _clubSeleccionado!,
+      fotoPath: _fotoPath,
     );
 
-    // 🔥 Obtener providers ANTES de operaciones asíncronas
     final provider = context.read<JugadorProvider>();
     final connectivityProvider = context.read<ConnectivityProvider>();
     final syncProvider = context.read<SyncProvider>();
@@ -287,6 +379,7 @@ class _FormularioJugadorState extends State<FormularioJugador> {
           'ciudad': jugador.ciudad,
           'fecha_nacimiento': jugador.fechaNacimiento.toIso8601String().split('T').first,
           'id_club': jugador.idClub,
+          'foto_path': jugador.fotoPath,
           'pendiente_envio': 1,
           'ultima_sincronizacion': null,
           'eliminado_local': 0,

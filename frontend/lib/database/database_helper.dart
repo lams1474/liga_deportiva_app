@@ -19,32 +19,35 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     if (kIsWeb) {
-      // 🔥 En web, usar una base de datos en memoria
       return await openDatabase(
         inMemoryDatabasePath,
-        version: 1,
+        version: 2,  // 🔥 CAMBIADO: de 1 a 2
         onCreate: _onCreate,
+        onUpgrade: _onUpgrade,  // 🔥 NUEVO
       );
     }
 
-    // En móvil/desktop, usar archivo físico
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final path = join(documentsDirectory.path, 'liga_deportiva.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,  // 🔥 CAMBIADO: de 1 a 2
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,  // 🔥 NUEVO
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // Tabla de CLUBES
+    // Tabla de CLUBES (con campos de ubicación)
     await db.execute('''
       CREATE TABLE clubes (
         id_club INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
         ciudad TEXT NOT NULL,
         fecha_fundacion TEXT NOT NULL,
+        latitud REAL,
+        longitud REAL,
+        precision_ubicacion TEXT,
         ultima_sincronizacion TEXT,
         pendiente_envio INTEGER DEFAULT 0,
         eliminado_local INTEGER DEFAULT 0,
@@ -52,7 +55,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabla de JUGADORES
+    // Tabla de JUGADORES (con campo de foto)
     await db.execute('''
       CREATE TABLE jugadores (
         id_jugador INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +64,7 @@ class DatabaseHelper {
         ciudad TEXT NOT NULL,
         fecha_nacimiento TEXT NOT NULL,
         id_club INTEGER NOT NULL,
+        foto_path TEXT,
         ultima_sincronizacion TEXT,
         pendiente_envio INTEGER DEFAULT 0,
         eliminado_local INTEGER DEFAULT 0,
@@ -68,7 +72,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabla de OPERACIONES PENDIENTES
+    // Tabla de OPERACIONES PENDIENTES (sin cambios)
     await db.execute('''
       CREATE TABLE operaciones_pendientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,6 +85,19 @@ class DatabaseHelper {
         proximo_intento TEXT
       )
     ''');
+  }
+
+  // 🔥 NUEVO: Migración de versión 1 a 2
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Agregar columnas de ubicación a clubes
+      await db.execute('ALTER TABLE clubes ADD COLUMN latitud REAL');
+      await db.execute('ALTER TABLE clubes ADD COLUMN longitud REAL');
+      await db.execute('ALTER TABLE clubes ADD COLUMN precision_ubicacion TEXT');
+
+      // Agregar columna de foto a jugadores
+      await db.execute('ALTER TABLE jugadores ADD COLUMN foto_path TEXT');
+    }
   }
 
   // ============================================================

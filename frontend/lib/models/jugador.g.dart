@@ -13,6 +13,7 @@ Jugador _$JugadorFromJson(Map<String, dynamic> json) => Jugador(
   ciudad: json['ciudad'] as String,
   fechaNacimiento: DateTime.parse(json['fecha_nacimiento'] as String),
   idClub: (json['id_club'] as num).toInt(),
+  fotoPath: json['foto_path'] as String?,
   clubData: json['club'] as Map<String, dynamic>?,
 );
 

@@ -4,7 +4,7 @@ part 'jugador.g.dart';
 
 @JsonSerializable()
 class Jugador {
-  @JsonKey(name: 'id_jugador', includeToJson: false)  // 🔥 NO incluir en toJson
+  @JsonKey(name: 'id_jugador', includeToJson: false)
   final int? idJugador;
 
   final String cedula;
@@ -17,7 +17,10 @@ class Jugador {
   @JsonKey(name: 'id_club')
   final int idClub;
 
-  @JsonKey(name: 'club', includeToJson: false)  // 🔥 NO incluir en toJson
+  @JsonKey(name: 'foto_path')  // 🔥 CORREGIDO: ahora SÍ se envía al backend
+  final String? fotoPath;
+
+  @JsonKey(name: 'club', includeToJson: false)
   final Map<String, dynamic>? clubData;
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,6 +33,7 @@ class Jugador {
     required this.ciudad,
     required this.fechaNacimiento,
     required this.idClub,
+    this.fotoPath,
     this.clubData,
   });
 
@@ -43,6 +47,7 @@ class Jugador {
     String? ciudad,
     DateTime? fechaNacimiento,
     int? idClub,
+    String? fotoPath,
     Map<String, dynamic>? clubData,
   }) {
     return Jugador(
@@ -52,6 +57,7 @@ class Jugador {
       ciudad: ciudad ?? this.ciudad,
       fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
       idClub: idClub ?? this.idClub,
+      fotoPath: fotoPath ?? this.fotoPath,
       clubData: clubData ?? this.clubData,
     );
   }

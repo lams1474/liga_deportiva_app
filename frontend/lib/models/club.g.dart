@@ -11,6 +11,9 @@ Club _$ClubFromJson(Map<String, dynamic> json) => Club(
   nombre: json['nombre'] as String,
   ciudad: json['ciudad'] as String,
   fechaFundacion: DateTime.parse(json['fecha_fundacion'] as String),
+  latitud: (json['latitud'] as num?)?.toDouble(),
+  longitud: (json['longitud'] as num?)?.toDouble(),
+  precisionUbicacion: json['precision_ubicacion'] as String?,
 );
 
 Map<String, dynamic> _$ClubToJson(Club instance) => <String, dynamic>{

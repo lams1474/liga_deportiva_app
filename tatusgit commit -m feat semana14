@@ -1,0 +1,168 @@
+warning: in the working copy of 'frontend/lib/models/club.g.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/lib/models/jugador.g.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/linux/flutter/generated_plugin_registrant.cc', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/linux/flutter/generated_plugins.cmake', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/macos/Flutter/GeneratedPluginRegistrant.swift', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/pubspec.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/windows/flutter/generated_plugin_registrant.cc', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/windows/flutter/generated_plugins.cmake', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/backend/prisma/schema.prisma b/backend/prisma/schema.prisma[m
+[1mindex 218ab59..83933fc 100644[m
+[1m--- a/backend/prisma/schema.prisma[m
+[1m+++ b/backend/prisma/schema.prisma[m
+[36m@@ -49,6 +49,7 @@[m [mmodel Jugador {[m
+   disciplinas      JugadorDisciplina[][m
+ [m
+   @@index([id_club])[m
+[32m+[m[32m  foto_path String? @db.VarChar(500)[m
+ }[m
+ [m
+ model Disciplina {[m
+[1mdiff --git a/frontend/android/app/src/main/AndroidManifest.xml b/frontend/android/app/src/main/AndroidManifest.xml[m
+[1mindex 0fd500e..9bf853a 100644[m
+[1m--- a/frontend/android/app/src/main/AndroidManifest.xml[m
+[1m+++ b/frontend/android/app/src/main/AndroidManifest.xml[m
+[36m@@ -1,4 +1,16 @@[m
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">[m
+[32m+[m[32m    <!-- 🔥 Permisos de funcionalidades nativas (Semana 14) -->[m
+[32m+[m[32m    <uses-permission android:name="android.permission.CAMERA" />[m
+[32m+[m[32m    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />[m
+[32m+[m[32m    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />[m
+[32m+[m
+[32m+[m[32m    <!-- 🔥 Requerido para image_picker en Android 11+ -->[m
+[32m+[m[32m    <queries>[m
+[32m+[m[32m        <intent>[m
+[32m+[m[32m            <action android:name="android.media.action.IMAGE_CAPTURE" />[m
+[32m+[m[32m        </intent>[m
+[32m+[m[32m    </queries>[m
+[32m+[m
+     <application[m
+         android:label="frontend"[m
+         android:name="${applicationName}"[m
+[36m@@ -42,4 +54,4 @@[m
+             <data android:mimeType="text/plain"/>[m
+         </intent>[m
+     </queries>[m
+[31m-</manifest>[m
+[32m+[m[32m</manifest>[m
+\ No newline at end of file[m
+[1mdiff --git a/frontend/lib/config/api_config.dart b/frontend/lib/config/api_config.dart[m
+[1mindex 8763c9d..2f7bcde 100644[m
+[1m--- a/frontend/lib/config/api_config.dart[m
+[1m+++ b/frontend/lib/config/api_config.dart[m
+[36m@@ -1,6 +1,6 @@[m
+ class ApiConfig {[m
+   // 🔥 Valores por defecto para desarrollo local[m
+[31m-  static const String _defaultApiUrl = 'http://localhost:3000/api';[m
+[32m+[m[32m  static const String _defaultApiUrl = 'http://192.168.1.6:3000/api';[m
+   static const String _defaultEnvironment = 'dev';[m
+ [m
+   // 🔥 Configuración desde --dart-define[m
+[1mdiff --git a/frontend/lib/database/database_helper.dart b/frontend/lib/database/database_helper.dart[m
+[1mindex f0ee386..a11e0a2 100644[m
+[1m--- a/frontend/lib/database/database_helper.dart[m
+[1m+++ b/frontend/lib/database/database_helper.dart[m
+[36m@@ -19,32 +19,35 @@[m [mclass DatabaseHelper {[m
+ [m
+   Future<Database> _initDatabase() async {[m
+     if (kIsWeb) {[m
+[31m-      // 🔥 En web, usar una base de datos en memoria[m
+       return await openDatabase([m
+         inMemoryDatabasePath,[m
+[31m-        version: 1,[m
+[32m+[m[32m        version: 2,  // 🔥 CAMBIADO: de 1 a 2[m
+         onCreate: _onCreate,[m
+[32m+[m[32m        onUpgrade: _onUpgrade,  // 🔥 NUEVO[m
+       );[m
+     }[m
+ [m
+[31m-    // En móvil/desktop, usar archivo físico[m
+     final documentsDirectory = await getApplicationDocumentsDirectory();[m
+     final path = join(documentsDirectory.path, 'liga_deportiva.db');[m
+     return await openDatabase([m
+       path,[m
+[31m-      version: 1,[m
+[32m+[m[32m      version: 2,  // 🔥 CAMBIADO: de 1 a 2[m
+       onCreate: _onCreate,[m
+[32m+[m[32m      onUpgrade: _onUpgrade,  // 🔥 NUEVO[m
+     );[m
+   }[m
+ [m
+   Future<void> _onCreate(Database db, int version) async {[m
+[31m-    // Tabla de CLUBES[m
+[32m+[m[32m    // Tabla de CLUBES (con campos de ubicación)[m
+     await db.execute('''[m
+       CREATE TABLE clubes ([m
+         id_club INTEGER PRIMARY KEY AUTOINCREMENT,[m
+         nombre TEXT NOT NULL,[m
+         ciudad TEXT NOT NULL,[m
+         fecha_fundacion TEXT NOT NULL,[m
+[32m+[m[32m        latitud REAL,[m
+[32m+[m[32m        longitud REAL,[m
+[32m+[m[32m        precision_ubicacion TEXT,[m
+         ultima_sincronizacion TEXT,[m
+         pendiente_envio INTEGER DEFAULT 0,[m
+         eliminado_local INTEGER DEFAULT 0,[m
+[36m@@ -52,7 +55,7 @@[m [mclass DatabaseHelper {[m
+       )[m
+     ''');[m
+ [m
+[31m-    // Tabla de JUGADORES[m
+[32m+[m[32m    // Tabla de JUGADORES (con campo de foto)[m
+     await db.execute('''[m
+       CREATE TABLE jugadores ([m
+         id_jugador INTEGER PRIMARY KEY AUTOINCREMENT,[m
+[36m@@ -61,6 +64,7 @@[m [mclass DatabaseHelper {[m
+         ciudad TEXT NOT NULL,[m
+         fecha_nacimiento TEXT NOT NULL,[m
+         id_club INTEGER NOT NULL,[m
+[32m+[m[32m        foto_path TEXT,[m
+         ultima_sincronizacion TEXT,[m
+         pendiente_envio INTEGER DEFAULT 0,[m
+         eliminado_local INTEGER DEFAULT 0,[m
+[36m@@ -68,7 +72,7 @@[m [mclass DatabaseHelper {[m
+       )[m
+     ''');[m
+ [m
+[31m-    // Tabla de OPERACIONES PENDIENTES[m
+[32m+[m[32m    // Tabla de OPERACIONES PENDIENTES (sin cambios)[m
+     await db.execute('''[m
+       CREATE TABLE operaciones_pendientes ([m
+         id INTEGER PRIMARY KEY AUTOINCREMENT,[m
+[36m@@ -83,6 +87,19 @@[m [mclass DatabaseHelper {[m
+     ''');[m
+   }[m
+ [m
+[32m+[m[32m  // 🔥 NUEVO: Migración de versión 1 a 2[m
+[32m+[m[32m  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {[m
+[32m+[m[32m    if (oldVersion < 2) {[m
+[32m+[m[32m      // Agregar columnas de ubicación a clubes[m
+[32m+[m[32m      await db.execute('ALTER TABLE clubes ADD COLUMN latitud REAL');[m
+[32m+[m[32m      await db.execute('ALTER TABLE clubes ADD COLUMN longitud REAL');[m
+[32m+[m[32m      await db.execute('ALTER TABLE clubes ADD COLUMN precision_ubicacion TEXT');[m
+[32m+[m
+[32m+[m[32m      // Agregar columna de foto a jugadores[m
+[32m+[m[32m      await db.execute('ALTER TABLE jugadores ADD COLUMN foto_path TEXT');[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+   // ============================================================[m
+   // LIMPIAR TODA LA BASE DE DATOS[m
+   // ============================================================[m
+[1mdiff --git a/frontend/lib/forms/formulario_jugador.dart b/frontend/lib/forms/formulario_jugador.dart[m
+[1mindex 50ba040..1ff3c77 100644[m
+[1m--- a/frontend/lib/forms/formulario_jugador.dart[m
+[1m+++ b/frontend/lib/forms/formulario_jugador.dart[m
+[36m@@ -1,4 +1,7 @@[m
+[32m+[m[32mimport 'dart:io';[m
+[32m+[m[32mimport 'package:flutter/foundation.dart' show kIsWeb;[m
+ import 'package:flutter/material.dart';[m
+[32m+[m[32mimport 'package:image_picker/image_picker.dart';[m
+ import 'package:provider/provider.dart';[m
+ import '../models/jugador.dart';[m
+ import '../providers/jugador_provider.dart';[m
+[36m@@ -6,6 +9,8 @@[m [mimport '../providers/club_provider.dart';[m
+ import '../providers/connectivity_provider.dart';[m
+ import '../providers/sync_provider.dart';[m
+ import '../database/app_dao.dart';[m
+[32m+[m[32mimport 
