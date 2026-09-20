@@ -17,7 +17,7 @@ class Jugador {
   @JsonKey(name: 'id_club')
   final int idClub;
 
-  @JsonKey(name: 'foto_path')  // 🔥 CORREGIDO: ahora SÍ se envía al backend
+  @JsonKey(name: 'foto_path')
   final String? fotoPath;
 
   @JsonKey(name: 'club', includeToJson: false)

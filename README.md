@@ -30,6 +30,8 @@ La aplicación tiene como objetivo apoyar la gestión de la Liga Deportiva Barri
 20. [Reproducción básica del entorno](#20-reproducción-básica-del-entorno)
 21. [Estado del proyecto](#21-estado-del-proyecto)
 22. [Conclusión](#22-conclusión)
+23. [23. Interceptores de Dio](Semana 13)
+24. [Funcionalidades nativas](Semana 14)
 
 ---
 
@@ -633,6 +635,165 @@ Se implementaron funcionalidades avanzadas como:
 - Cola de operaciones pendientes con reintentos
 
 La documentación permite identificar las herramientas, versiones, comandos y configuraciones principales utilizadas durante el desarrollo.
+
+## 23. Interceptores de Dio (Semana 13)
+
+Se implementaron **4 interceptores** en el siguiente orden:
+
+| # | Interceptor | Momento | Responsabilidad |
+|---|-------------|---------|-----------------|
+| 1 | `AuthInterceptor` | Antes de enviar | Inyecta el token JWT en el header `Authorization` |
+| 2 | `RefreshInterceptor` | Ante un 401 | Renueva el token y reintenta la petición |
+| 3 | `LogInterceptor` | Antes/después | Registra peticiones (solo en desarrollo) |
+| 4 | `ErrorInterceptor` | Ante un error | Traduce errores a mensajes del dominio |
+
+### Flujo de renovación de token
+
+```text
+1. Petición → 401 (token expirado)
+2. RefreshInterceptor detecta el 401
+3. Solicita nuevo token a POST /auth/refresh
+4. Guarda el nuevo token
+5. Reintenta la petición original
+6. Si el refresh falla → cierra sesión
+----
+---
+
+## 24. Funcionalidades nativas (Semana 14)
+
+Se incorporaron **dos capacidades nativas** del dispositivo, con manejo completo de los cuatro estados de permiso (incluida la denegación permanente) y degradación elegante ante la indisponibilidad.
+
+### 24.1 Capacidades seleccionadas
+
+| # | Capacidad | Plugin | Tipo | Justificación |
+|---|---|---|---|---|
+| 1 | **Cámara** | `image_picker ^1.1.2` | Esencial | Permite capturar la foto del jugador al momento del registro, requisito para la identificación visual del deportista. |
+| 2 | **Ubicación** | `geolocator ^13.0.1` | Opcional | Registra las coordenadas del club deportivo para ubicarlo geográficamente en el mapa de la liga. |
+
+### 24.2 Verificación de plugins
+
+| Plugin | Pub.dev | Plataformas | Mantenido por |
+|---|---|---|---|
+| `image_picker` | ✅ Verificado | Android, iOS, Web, Desktop | Flutter Team |
+| `geolocator` | ✅ Verificado | Android, iOS, Web, Desktop | Baseflow |
+| `permission_handler` | ✅ Verificado | Android, iOS | Baseflow |
+
+Criterios aplicados:
+- Publicados y verificados en pub.dev
+- Mantenidos activamente (última actualización < 6 meses)
+- Compatibles con las plataformas objetivo del proyecto
+- Ampliamente adoptados en la comunidad Flutter
+
+### 24.3 Permisos declarados
+
+#### Android (`android/app/src/main/AndroidManifest.xml`)
+
+| Permiso | Propósito |
+|---|---|
+| `android.permission.CAMERA` | Tomar la foto del jugador al registrarlo |
+| `android.permission.ACCESS_FINE_LOCATION` | Obtener ubicación precisa del club deportivo |
+| `android.permission.ACCESS_COARSE_LOCATION` | Obtener ubicación aproximada del club deportivo |
+
+Además se declara la query de `IMAGE_CAPTURE` requerida por `image_picker` en Android 11+.
+
+#### iOS (`ios/Runner/Info.plist`)
+
+| Clave | Cadena de propósito |
+|---|---|
+| `NSCameraUsageDescription` | "La Liga Deportiva necesita acceso a la cámara para tomar la foto del jugador al momento de registrarlo." |
+| `NSLocationWhenInUseUsageDescription` | "La Liga Deportiva usa tu ubicación para registrar la ubicación del club deportivo mientras usas la aplicación." |
+| `NSPhotoLibraryUsageDescription` | "La Liga Deportiva necesita acceso a tus fotos para que puedas escoger una imagen existente como foto del jugador." |
+
+### 24.4 Los cuatro estados de un permiso
+
+Implementados en `lib/services/permission_service.dart` mediante el enum `PermissionResult`:
+
+| Estado | Cuándo ocurre | Comportamiento de la app |
+|---|---|---|
+| `granted` | El usuario concede el permiso | Se ejecuta la funcionalidad normalmente |
+| `denied` | El usuario deniega una vez | SnackBar naranja: "Para tomar la foto necesitas permitir el acceso a la cámara." |
+| `permanentlyDenied` | El usuario deniega y marca "no volver a preguntar" | Diálogo con botón **"Abrir Ajustes"** que ejecuta `openAppSettings()` |
+| `serviceDisabled` | El GPS del dispositivo está apagado (solo ubicación) | Diálogo con botón **"Activar ubicación"** que ejecuta `Geolocator.openLocationSettings()` |
+
+### 24.5 Matriz de degradación
+
+| Capacidad | Estado | Comportamiento de la app | Acción del usuario |
+|---|---|---|---|
+| Cámara | Concedido | Abre la cámara del sistema | — |
+| Cámara | Denegado | SnackBar informativo, sin crash | Puede reintentar |
+| Cámara | Denegación permanente | Diálogo → Ajustes del sistema | Habilita desde Ajustes |
+| Cámara | Ausente | `ImagePicker` no abre, la app continúa | Usa "Escoger" o deja sin foto |
+| Ubicación | Concedido + GPS activo | Obtiene coordenadas con precisión | — |
+| Ubicación | Denegado | SnackBar informativo | Puede reintentar |
+| Ubicación | Denegación permanente | Diálogo → Ajustes del sistema | Habilita desde Ajustes |
+| Ubicación | GPS apagado | Diálogo → Ajustes de ubicación del dispositivo | Activa el GPS |
+
+### 24.6 Integración con persistencia local y backend
+
+- **Foto del jugador**:
+  - Se copia de la caché temporal a `getApplicationDocumentsDirectory()/fotos_jugadores/`
+  - La ruta se persiste en SQLite local (`jugadores.foto_path`)
+  - La ruta se envía al backend MySQL (`Jugador.foto_path`) mediante `POST /api/jugadores`
+- **Ubicación del club**:
+  - Se guarda en SQLite local (`clubes.latitud`, `clubes.longitud`, `clubes.precision_ubicacion`)
+  - Se envía al backend MySQL (`Club.latitud`, `Club.longitud`, `Club.precision_ubicacion`)
+- **Sincronización offline**:
+  - Si el backend no responde (`BackendChecker.estaDisponible()` retorna `false`), la operación se encola en la tabla `operaciones_pendientes`
+  - Al recuperar conexión, `SyncProvider` reintenta automáticamente con backoff exponencial
+  - Esto mantiene compatibilidad con la estrategia implementada en la Semana 12
+
+### 24.7 Solicitud en el momento de uso
+
+Los permisos **NO** se solicitan al iniciar la aplicación. Se solicitan cuando el usuario ejecuta una acción concreta:
+
+| Acción del usuario | Permiso solicitado |
+|---|---|
+| Tocar "Tomar foto" en el formulario de jugador | `Permission.camera` |
+| Tocar "Obtener ubicación" en el formulario de club | `Permission.locationWhenInUse` + verificación previa de `Geolocator.isLocationServiceEnabled()` |
+
+Antes de cada solicitud, la app verifica el estado actual del permiso. Si el usuario deniega, muestra un SnackBar informativo. Si deniega permanentemente, muestra un diálogo con acceso directo a los ajustes del sistema.
+
+### 24.8 Cumplimiento de la tienda
+
+| Aspecto | Estado |
+|---|---|
+| `targetSdk` | 36 (Android 16) ✅ |
+| `compileSdk` | 36 (Android 16) ✅ |
+| `minSdk` | definido por Flutter (21+) |
+| Permisos de acceso amplio innecesarios | ❌ Ninguno |
+| Ubicación en segundo plano (`ACCESS_BACKGROUND_LOCATION`) | ❌ No se solicita |
+| Acceso a galería con permiso amplio (`READ_MEDIA_IMAGES`) | ❌ No se declara — se usa el selector del sistema |
+| `NSPhotoLibraryUsageDescription` | ✅ Se declara solo porque se permite escoger foto existente |
+
+Se revisó el nivel de API objetivo considerando la política vigente de Google Play (a partir del 31 de agosto de 2026, las aplicaciones nuevas deben apuntar a Android 16 / API 36).
+
+### 24.9 Pruebas en dispositivo físico
+
+**Dispositivo:** Infinix X6827 (Android 14)
+
+| # | Caso | Resultado |
+|---|---|---|
+| 1 | Permiso concedido | ✅ Foto capturada y ubicación registrada; datos persistidos en SQLite y enviados al backend |
+| 2 | Permiso denegado | ✅ SnackBar informativo, la app continúa funcionando |
+| 3 | Denegación permanente | ✅ Diálogo con botón "Abrir Ajustes" que ejecuta `openAppSettings()` |
+| 4 | Permiso revocado en vivo | ✅ La app detecta el estado real al reintentar y aplica la degradación |
+| 5 | Capacidad ausente (GPS apagado) | ✅ Diálogo con botón "Activar ubicación" que ejecuta `Geolocator.openLocationSettings()` |
+
+Nota: cuando se cambia un permiso desde Ajustes del sistema, Android reinicia el proceso de la aplicación. Este comportamiento es normal del sistema operativo y no representa un fallo de la app.
+
+### 24.10 Archivos relevantes
+
+| Archivo | Propósito |
+|---|---|
+| `lib/services/permission_service.dart` | Servicio centralizado con el enum `PermissionResult` y los 4 estados |
+| `lib/services/foto_service.dart` | Copia la foto de la caché temporal al directorio permanente de la app |
+| `lib/services/backend_checker.dart` | Verifica si el backend responde antes de decidir guardar local o remoto |
+| `lib/forms/formulario_jugador.dart` | Integración de cámara en el formulario de jugador |
+| `lib/screens/clubes/crear_club_screen.dart` | Integración de ubicación al crear club |
+| `lib/screens/clubes/editar_club_screen.dart` | Integración de ubicación al editar club |
+| `lib/database/database_helper.dart` | Versión 2 de la BD local con columnas de ubicación y foto |
+| `android/app/src/main/AndroidManifest.xml` | Declaración de permisos Android |
+| `ios/Runner/Info.plist` | Cadenas de propósito iOS |
 
 ---
 

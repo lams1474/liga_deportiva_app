@@ -31,7 +31,7 @@ export class AuthService {
                 rol: usuario.rol,
             },
             secret,
-            { expiresIn: '1m' }
+            { expiresIn: '50m' }  // 🔥 CAMBIADO: antes '1m', ahora 15 minutos
         );
 
         // 🔥 Refresh token: vida más larga
@@ -47,7 +47,7 @@ export class AuthService {
         return {
             mensaje: 'Inicio de sesión exitoso.',
             token,
-            refreshToken,  // 🔥 NUEVO
+            refreshToken,
             usuario: {
                 id_usuario: usuario.id_usuario,
                 nombre: usuario.nombre,
@@ -90,7 +90,7 @@ export class AuthService {
                     rol: usuario.rol,
                 },
                 secret,
-                { expiresIn: '8h' }
+                { expiresIn: '15m' }  // 🔥 CAMBIADO: consistente con login
             );
 
             return {

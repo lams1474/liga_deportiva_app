@@ -28,10 +28,8 @@ import 'theme/app_theme.dart';
 import 'app_global.dart';
 
 void main() async {
-  // 🔥 Inicializar binding antes de cualquier operación asíncrona
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 Configurar sqflite para web
   if (kIsWeb) {
     databaseFactory = databaseFactoryFfiWeb;
     print('✅ sqflite configurado para web');

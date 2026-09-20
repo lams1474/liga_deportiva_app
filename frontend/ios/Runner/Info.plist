@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Frontend</string>
+	<string>Liga Deportiva</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,6 +26,15 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- 🔥 Cadenas de propósito para funcionalidades nativas (Semana 14) -->
+	<key>NSCameraUsageDescription</key>
+	<string>La Liga Deportiva necesita acceso a la cámara para tomar la foto del jugador al momento de registrarlo.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>La Liga Deportiva usa tu ubicación para registrar la ubicación del club deportivo mientras usas la aplicación.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>La Liga Deportiva necesita acceso a tus fotos para que puedas escoger una imagen existente como foto del jugador.</string>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

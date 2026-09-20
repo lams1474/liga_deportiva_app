@@ -1,63 +1,184 @@
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+/// Resultado de una solicitud de permiso
+enum PermissionResult {
+  granted,              // Concedido
+  denied,               // Denegado (puede volver a pedir)
+  permanentlyDenied,    // Denegación permanente (solo ajustes)
+  serviceDisabled,      // Servicio del dispositivo apagado (GPS)
+}
 
 class PermissionService {
-  // 🔥 Verificar y solicitar permiso de cámara
-  static Future<bool> solicitarCamara(BuildContext context) async {
-    final status = await Permission.camera.status;
+  // ============================================================
+  // CÁMARA
+  // ============================================================
+  static Future<PermissionResult> solicitarCamara(BuildContext context) async {
+    try {
+      final status = await Permission.camera.status;
+      if (status.isGranted) return PermissionResult.granted;
 
-    if (status.isGranted) return true;
+      if (status.isPermanentlyDenied || status.isRestricted) {
+        await _mostrarDialogoAjustes(context, 'cámara');
+        return PermissionResult.permanentlyDenied;
+      }
 
-    if (status.isPermanentlyDenied) {
-      await _mostrarDialogoAjustes(context, 'cámara');
-      return false;
+      final result = await Permission.camera.request();
+
+      if (result.isGranted) return PermissionResult.granted;
+
+      if (result.isPermanentlyDenied || result.isRestricted) {
+        await _mostrarDialogoAjustes(context, 'cámara');
+        return PermissionResult.permanentlyDenied;
+      }
+
+      _mostrarSnackBar(
+        context,
+        'Para tomar la foto necesitas permitir el acceso a la cámara.',
+      );
+      return PermissionResult.denied;
+    } catch (e) {
+      debugPrint('❌ Error en solicitarCamara: $e');
+      return PermissionResult.denied;
     }
-
-    final result = await Permission.camera.request();
-    return result.isGranted;
   }
 
-  // 🔥 Verificar y solicitar permiso de ubicación
-  static Future<bool> solicitarUbicacion(BuildContext context) async {
-    final status = await Permission.locationWhenInUse.status;
+  // ============================================================
+  // UBICACIÓN
+  // ============================================================
+  static Future<PermissionResult> solicitarUbicacion(BuildContext context) async {
+    try {
+      // 1. ¿El servicio de ubicación está encendido?
+      final servicioActivo = await Geolocator.isLocationServiceEnabled();
+      if (!servicioActivo) {
+        await _mostrarDialogoGPSApagado(context);
+        return PermissionResult.serviceDisabled;
+      }
 
-    if (status.isGranted) return true;
+      // 2. ¿Ya tiene permiso?
+      final status = await Permission.locationWhenInUse.status;
+      if (status.isGranted) return PermissionResult.granted;
 
-    if (status.isPermanentlyDenied) {
-      await _mostrarDialogoAjustes(context, 'ubicación');
-      return false;
+      if (status.isPermanentlyDenied || status.isRestricted) {
+        await _mostrarDialogoAjustes(context, 'ubicación');
+        return PermissionResult.permanentlyDenied;
+      }
+
+      // 3. Pedir permiso
+      final result = await Permission.locationWhenInUse.request();
+
+      if (result.isGranted) return PermissionResult.granted;
+
+      if (result.isPermanentlyDenied || result.isRestricted) {
+        await _mostrarDialogoAjustes(context, 'ubicación');
+        return PermissionResult.permanentlyDenied;
+      }
+
+      _mostrarSnackBar(
+        context,
+        'Para registrar la ubicación necesitas permitir el acceso.',
+      );
+      return PermissionResult.denied;
+    } catch (e) {
+      debugPrint('❌ Error en solicitarUbicacion: $e');
+      return PermissionResult.denied;
     }
-
-    final result = await Permission.locationWhenInUse.request();
-    return result.isGranted;
   }
 
-  // 🔥 Diálogo para denegación permanente
+  // ============================================================
+  // DIÁLOGOS
+  // ============================================================
   static Future<void> _mostrarDialogoAjustes(
     BuildContext context,
     String capacidad,
   ) async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Acceso a $capacidad bloqueado'),
-        content: Text(
-          'El acceso a $capacidad está bloqueado. Puede habilitarlo desde los ajustes del sistema.',
+    if (!context.mounted) return;
+    try {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text('Acceso a $capacidad bloqueado'),
+          content: Text(
+            'El acceso a $capacidad está bloqueado. '
+            'Puedes habilitarlo manualmente desde los ajustes del sistema.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                // Pequeño delay para que el diálogo se cierre antes de abrir Ajustes
+                await Future.delayed(const Duration(milliseconds: 200));
+                try {
+                  await openAppSettings();
+                } catch (e) {
+                  debugPrint('❌ Error abriendo ajustes: $e');
+                }
+              },
+              child: const Text('Abrir Ajustes'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+      );
+    } catch (e) {
+      debugPrint('❌ Error mostrando diálogo de ajustes: $e');
+    }
+  }
+
+  static Future<void> _mostrarDialogoGPSApagado(BuildContext context) async {
+    if (!context.mounted) return;
+    try {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Ubicación desactivada'),
+          content: const Text(
+            'El servicio de ubicación del dispositivo está apagado. '
+            'Actívalo para poder registrar la ubicación.',
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              openAppSettings();
-            },
-            child: const Text('Abrir Ajustes'),
-          ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await Future.delayed(const Duration(milliseconds: 200));
+                try {
+                  await Geolocator.openLocationSettings();
+                } catch (e) {
+                  debugPrint('❌ Error abriendo ajustes de ubicación: $e');
+                }
+              },
+              child: const Text('Activar ubicación'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error mostrando diálogo GPS: $e');
+    }
+  }
+
+  static void _mostrarSnackBar(BuildContext context, String mensaje) {
+    if (!context.mounted) return;
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.orange.shade700,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error mostrando SnackBar: $e');
+    }
   }
 }

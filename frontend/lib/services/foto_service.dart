@@ -12,22 +12,26 @@ class FotoService {
         return null;
       }
 
-      // 1. Obtener el directorio permanente de la app
       final directorioApp = await getApplicationDocumentsDirectory();
       final directorioFotos = Directory(
         p.join(directorioApp.path, 'fotos_jugadores'),
       );
 
-      // 2. Crear el directorio si no existe
       if (!await directorioFotos.exists()) {
         await directorioFotos.create(recursive: true);
       }
 
-      // 3. Copiar la foto con un nombre único
-      final nombreArchivo = 'jugador_${DateTime.now().millisecondsSinceEpoch}${p.extension(rutaTemporal)}';
+      final nombreArchivo =
+          'jugador_${DateTime.now().millisecondsSinceEpoch}${p.extension(rutaTemporal)}';
       final rutaPermanente = p.join(directorioFotos.path, nombreArchivo);
 
       await archivoTemporal.copy(rutaPermanente);
+
+      // 🔥 Debug: confirmar que se guardó
+      final archivoFinal = File(rutaPermanente);
+      final existe = await archivoFinal.exists();
+      final tamanio = existe ? await archivoFinal.length() : 0;
+      print('✅ Foto guardada en: $rutaPermanente ($tamanio bytes)');
 
       return rutaPermanente;
     } catch (e) {

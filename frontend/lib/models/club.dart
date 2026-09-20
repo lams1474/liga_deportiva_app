@@ -10,23 +10,24 @@ class Club {
   final String nombre;
   final String ciudad;
 
+  // 🔥 Presidente (String?)
+  final String? presidente;
+
   @JsonKey(name: 'fecha_fundacion')
   final DateTime fechaFundacion;
 
-  // 🔥 Campos de ubicación (solo locales, NO se envían al backend)
-  @JsonKey(includeToJson: false, includeFromJson: true)
+  // 🔥 AHORA SÍ se envían al backend
   final double? latitud;
-
-  @JsonKey(includeToJson: false, includeFromJson: true)
   final double? longitud;
 
-  @JsonKey(name: 'precision_ubicacion', includeToJson: false, includeFromJson: true)
+  @JsonKey(name: 'precision_ubicacion')
   final String? precisionUbicacion;
 
   Club({
     this.idClub,
     required this.nombre,
     required this.ciudad,
+    this.presidente,
     required this.fechaFundacion,
     this.latitud,
     this.longitud,
@@ -40,6 +41,7 @@ class Club {
     int? idClub,
     String? nombre,
     String? ciudad,
+    String? presidente,
     DateTime? fechaFundacion,
     double? latitud,
     double? longitud,
@@ -49,6 +51,7 @@ class Club {
       idClub: idClub ?? this.idClub,
       nombre: nombre ?? this.nombre,
       ciudad: ciudad ?? this.ciudad,
+      presidente: presidente ?? this.presidente,
       fechaFundacion: fechaFundacion ?? this.fechaFundacion,
       latitud: latitud ?? this.latitud,
       longitud: longitud ?? this.longitud,

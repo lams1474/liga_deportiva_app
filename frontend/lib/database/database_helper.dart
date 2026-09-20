@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -11,6 +12,9 @@ class DatabaseHelper {
 
   static Database? _database;
 
+  // 🔥 Versión actual de la BD local
+  static const int _dbVersion = 2;
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -21,29 +25,33 @@ class DatabaseHelper {
     if (kIsWeb) {
       return await openDatabase(
         inMemoryDatabasePath,
-        version: 2,  // 🔥 CAMBIADO: de 1 a 2
+        version: _dbVersion,
         onCreate: _onCreate,
-        onUpgrade: _onUpgrade,  // 🔥 NUEVO
+        onUpgrade: _onUpgrade,
       );
     }
 
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'liga_deportiva.db');
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, 'liga_deportiva.db');
     return await openDatabase(
       path,
-      version: 2,  // 🔥 CAMBIADO: de 1 a 2
+      version: _dbVersion,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,  // 🔥 NUEVO
+      onUpgrade: _onUpgrade,
     );
   }
 
+  // ============================================================
+  // CREACIÓN INICIAL (instalaciones nuevas)
+  // ============================================================
   Future<void> _onCreate(Database db, int version) async {
-    // Tabla de CLUBES (con campos de ubicación)
+    // Tabla de CLUBES
     await db.execute('''
       CREATE TABLE clubes (
         id_club INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
         ciudad TEXT NOT NULL,
+        presidente TEXT,
         fecha_fundacion TEXT NOT NULL,
         latitud REAL,
         longitud REAL,
@@ -55,7 +63,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabla de JUGADORES (con campo de foto)
+    // Tabla de JUGADORES
     await db.execute('''
       CREATE TABLE jugadores (
         id_jugador INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +80,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabla de OPERACIONES PENDIENTES (sin cambios)
+    // Tabla de OPERACIONES PENDIENTES
     await db.execute('''
       CREATE TABLE operaciones_pendientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,23 +95,36 @@ class DatabaseHelper {
     ''');
   }
 
-  // 🔥 NUEVO: Migración de versión 1 a 2
+  // ============================================================
+  // MIGRACIONES (cuando la versión sube)
+  // ============================================================
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // 🔥 v1 → v2: agregar presidente, latitud, longitud, precision_ubicacion y foto_path
     if (oldVersion < 2) {
-      // Agregar columnas de ubicación a clubes
-      await db.execute('ALTER TABLE clubes ADD COLUMN latitud REAL');
-      await db.execute('ALTER TABLE clubes ADD COLUMN longitud REAL');
-      await db.execute('ALTER TABLE clubes ADD COLUMN precision_ubicacion TEXT');
+      // Clubes
+      try {
+        await db.execute('ALTER TABLE clubes ADD COLUMN presidente TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE clubes ADD COLUMN latitud REAL');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE clubes ADD COLUMN longitud REAL');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE clubes ADD COLUMN precision_ubicacion TEXT');
+      } catch (_) {}
 
-      // Agregar columna de foto a jugadores
-      await db.execute('ALTER TABLE jugadores ADD COLUMN foto_path TEXT');
+      // Jugadores
+      try {
+        await db.execute('ALTER TABLE jugadores ADD COLUMN foto_path TEXT');
+      } catch (_) {}
     }
   }
 
   // ============================================================
   // LIMPIAR TODA LA BASE DE DATOS
   // ============================================================
-
   Future<void> limpiarTodaLaBaseDeDatos() async {
     final db = await database;
     await db.delete('clubes');
@@ -114,7 +135,6 @@ class DatabaseHelper {
   // ============================================================
   // OPERACIONES CON CLUBES
   // ============================================================
-
   Future<int> insertarClub(Map<String, dynamic> club) async {
     final db = await database;
     return await db.insert('clubes', club);
@@ -122,18 +142,12 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> obtenerTodosLosClubes() async {
     final db = await database;
-    return await db.query(
-      'clubes',
-      where: 'eliminado_local = 0',
-    );
+    return await db.query('clubes', where: 'eliminado_local = 0');
   }
 
   Future<List<Map<String, dynamic>>> obtenerClubesPendientes() async {
     final db = await database;
-    return await db.query(
-      'clubes',
-      where: 'pendiente_envio = 1',
-    );
+    return await db.query('clubes', where: 'pendiente_envio = 1');
   }
 
   Future<int> actualizarClub(Map<String, dynamic> club) async {
@@ -159,7 +173,6 @@ class DatabaseHelper {
   // ============================================================
   // OPERACIONES CON JUGADORES
   // ============================================================
-
   Future<int> insertarJugador(Map<String, dynamic> jugador) async {
     final db = await database;
     return await db.insert('jugadores', jugador);
@@ -167,18 +180,12 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> obtenerTodosLosJugadores() async {
     final db = await database;
-    return await db.query(
-      'jugadores',
-      where: 'eliminado_local = 0',
-    );
+    return await db.query('jugadores', where: 'eliminado_local = 0');
   }
 
   Future<List<Map<String, dynamic>>> obtenerJugadoresPendientes() async {
     final db = await database;
-    return await db.query(
-      'jugadores',
-      where: 'pendiente_envio = 1',
-    );
+    return await db.query('jugadores', where: 'pendiente_envio = 1');
   }
 
   Future<int> actualizarJugador(Map<String, dynamic> jugador) async {
@@ -202,9 +209,8 @@ class DatabaseHelper {
   }
 
   // ============================================================
-  // OPERACIONES CON OPERACIONES PENDIENTES
+  // OPERACIONES PENDIENTES
   // ============================================================
-
   Future<int> agregarOperacion({
     required String operacion,
     required String entidad,
@@ -288,10 +294,6 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('operaciones_pendientes');
   }
-
-  // ============================================================
-  // CERRAR BASE DE DATOS
-  // ============================================================
 
   Future<void> close() async {
     final db = await database;

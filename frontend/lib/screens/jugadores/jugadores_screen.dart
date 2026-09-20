@@ -115,26 +115,13 @@ class _JugadoresScreenState extends State<JugadoresScreen> {
                         return JugadorCard(
                           jugador: jugador,
                           onTap: () {},
-                          onEdit: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/jugadores/editar',
-                              arguments: jugador.idJugador,
-                            ).then((result) {
-                              // 🔥 Verificar mounted antes de usar context
-                              if (result == true && mounted) {
-                                context.read<JugadorProvider>().loadJugadores();
-                              }
-                            });
-                          },
-                          onDelete: () {
-                            _confirmarEliminacion(context, jugador);
-                          },
+                          onEdit: () => _editarJugador(jugador),
+                          onDelete: () => _confirmarEliminacion(jugador),
                         );
                       },
                     ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _mostrarFormulario(context),
+        onPressed: _crearJugador,
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
@@ -142,48 +129,93 @@ class _JugadoresScreenState extends State<JugadoresScreen> {
     );
   }
 
-  void _mostrarFormulario(BuildContext context) {
-    showModalBottomSheet(
+  // 🔥 CORREGIDO: capturar el provider ANTES de mostrar el bottom sheet
+  Future<void> _crearJugador() async {
+    if (!mounted) return;
+    final jugadorProvider = context.read<JugadorProvider>();
+
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
+      builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
         child: FormularioJugador(
           onSuccess: () {
-            if (mounted) {
-              context.read<JugadorProvider>().loadJugadores();
-            }
+            // 🔥 Usar la referencia capturada, no el context del sheet
+            jugadorProvider.loadJugadores();
           },
         ),
       ),
     );
   }
 
-  void _confirmarEliminacion(BuildContext context, Jugador jugador) {
+  // 🔥 CORREGIDO: capturar el provider ANTES de navegar
+  Future<void> _editarJugador(Jugador jugador) async {
+    if (!mounted) return;
+    final jugadorProvider = context.read<JugadorProvider>();
+
+    final result = await Navigator.pushNamed(
+      context,
+      '/jugadores/editar',
+      arguments: jugador.idJugador,
+    );
+
+    if (result == true && mounted) {
+      await jugadorProvider.loadJugadores();
+    }
+  }
+
+  // 🔥 CORREGIDO: capturar el provider ANTES de mostrar el diálogo
+  void _confirmarEliminacion(Jugador jugador) {
+    if (!mounted) return;
+    final jugadorProvider = context.read<JugadorProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar jugador'),
         content: Text('¿Estás seguro de eliminar a ${jugador.nombre}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancelar'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (mounted) {
-                context.read<JugadorProvider>().deleteJugador(jugador.idJugador!);
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+
+              final ok = await jugadorProvider.deleteJugador(jugador.idJugador!);
+
+              if (!mounted) return;
+
+              if (ok) {
+                await jugadorProvider.loadJugadores();
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ Jugador eliminado correctamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      jugadorProvider.errorMessage ?? 'Error al eliminar',
+                    ),
+                    backgroundColor: colorScheme.error,
+                  ),
+                );
               }
             },
             style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: colorScheme.error,
             ),
             child: const Text('Eliminar'),
           ),

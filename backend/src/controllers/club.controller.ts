@@ -18,8 +18,7 @@ export class ClubController {
 
     async crear(req: Request, res: Response) {
         try {
-            // 🔥 Validaciones básicas
-            const { nombre, ciudad, fecha_fundacion } = req.body;
+            const { nombre, ciudad, presidente, fecha_fundacion, latitud, longitud, precision_ubicacion } = req.body;
             const errores: { campo: string; mensaje: string }[] = [];
 
             if (!nombre || nombre.trim() === '') {
@@ -37,17 +36,21 @@ export class ClubController {
             }
 
             const data = {
-                ...req.body,
+                nombre: nombre.trim(),
+                ciudad: ciudad.trim(),
+                presidente: presidente?.trim() || null,           // 🔥 NUEVO
                 fecha_fundacion: fecha_fundacion
                     ? new Date(fecha_fundacion)
                     : undefined,
+                latitud: latitud != null ? Number(latitud) : null,        // 🔥 NUEVO
+                longitud: longitud != null ? Number(longitud) : null,     // 🔥 NUEVO
+                precision_ubicacion: precision_ubicacion ?? null,         // 🔥 NUEVO
             };
 
             const club = await this.service.crear(data);
             res.status(201).json(club);
 
         } catch (error: any) {
-            // 🔥 Detectar si es error de duplicado
             if (error.message.includes('ya está registrado') ||
                 error.message.includes('duplicate') ||
                 error.message.includes('unique')) {
@@ -59,7 +62,6 @@ export class ClubController {
                 });
             }
 
-            // Otros errores de validación
             if (error.message.includes('obligatorio') ||
                 error.message.includes('inválido') ||
                 error.message.includes('requerido')) {
@@ -71,7 +73,6 @@ export class ClubController {
                 });
             }
 
-            // Error interno del servidor
             res.status(400).json({
                 mensaje: error.message,
             });
@@ -81,7 +82,7 @@ export class ClubController {
     async actualizar(req: Request, res: Response) {
         try {
             const id = Number(req.params.id);
-            const { nombre, ciudad, fecha_fundacion } = req.body;
+            const { nombre, ciudad, presidente, fecha_fundacion, latitud, longitud, precision_ubicacion } = req.body;
             const errores: { campo: string; mensaje: string }[] = [];
 
             if (!nombre || nombre.trim() === '') {
@@ -99,10 +100,15 @@ export class ClubController {
             }
 
             const data = {
-                ...req.body,
+                nombre: nombre.trim(),
+                ciudad: ciudad.trim(),
+                presidente: presidente?.trim() || null,           // 🔥 NUEVO
                 fecha_fundacion: fecha_fundacion
                     ? new Date(fecha_fundacion)
                     : undefined,
+                latitud: latitud != null ? Number(latitud) : null,        // 🔥 NUEVO
+                longitud: longitud != null ? Number(longitud) : null,     // 🔥 NUEVO
+                precision_ubicacion: precision_ubicacion ?? null,         // 🔥 NUEVO
             };
 
             const club = await this.service.actualizar(id, data);

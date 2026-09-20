@@ -7,6 +7,7 @@ import '../../providers/sync_provider.dart';
 import '../../models/club.dart';
 import '../../database/app_dao.dart';
 import '../../services/permission_service.dart';
+import '../../services/backend_checker.dart';
 
 class CrearClubScreen extends StatefulWidget {
   const CrearClubScreen({super.key});
@@ -19,10 +20,10 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
   final _ciudadController = TextEditingController();
+  final _presidenteController = TextEditingController();
   late DateTime _fechaFundacion;
   bool _isSaving = false;
 
-  // NUEVO: Campos de ubicación
   double? _latitud;
   double? _longitud;
   String? _precisionUbicacion;
@@ -38,41 +39,32 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
   void dispose() {
     _nombreController.dispose();
     _ciudadController.dispose();
+    _presidenteController.dispose();
     super.dispose();
   }
 
-  // NUEVO: Obtener ubicación del club
   Future<void> _obtenerUbicacion() async {
-    // 1. Solicitar permiso con explicación previa
-    final ok = await PermissionService.solicitarUbicacion(context);
-    if (!ok) return;
+    final result = await PermissionService.solicitarUbicacion(context);
+
+    switch (result) {
+      case PermissionResult.granted:
+        break;
+      case PermissionResult.denied:
+      case PermissionResult.permanentlyDenied:
+      case PermissionResult.serviceDisabled:
+        return;
+    }
 
     setState(() => _cargandoUbicacion = true);
 
     try {
-      // 2. Verificar que el servicio de ubicación esté activo
-      final servicioActivo = await Geolocator.isLocationServiceEnabled();
-      if (!servicioActivo) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('El servicio de ubicación está desactivado. Actívelo en los ajustes del dispositivo.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        setState(() => _cargandoUbicacion = false);
-        return;
-      }
-
-      // 3. Obtener la posición actual
       final posicion = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // 4. Determinar si es precisa o aproximada
       final precision = posicion.accuracy < 100 ? 'precisa' : 'aproximada';
 
+      if (!mounted) return;
       setState(() {
         _latitud = posicion.latitude;
         _longitud = posicion.longitude;
@@ -80,24 +72,21 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
         _cargandoUbicacion = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('📍 Ubicación obtenida ($precision)'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 Ubicación obtenida ($precision)'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
+      if (!mounted) return;
       setState(() => _cargandoUbicacion = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error al obtener ubicación: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al obtener ubicación: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -115,124 +104,137 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del club',
-                  prefixIcon: Icon(Icons.sports),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'El nombre es obligatorio';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _ciudadController,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad',
-                  prefixIcon: Icon(Icons.location_city),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La ciudad es obligatoria';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _seleccionarFecha,
-                child: InputDecorator(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _nombreController,
                   decoration: const InputDecoration(
-                    labelText: 'Fecha de fundación',
-                    prefixIcon: Icon(Icons.calendar_today),
+                    labelText: 'Nombre del club',
+                    prefixIcon: Icon(Icons.sports),
                   ),
-                  child: Text(
-                    '${_fechaFundacion.day}/${_fechaFundacion.month}/${_fechaFundacion.year}',
-                    style: theme.textTheme.bodyMedium,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'El nombre es obligatorio';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _ciudadController,
+                  decoration: const InputDecoration(
+                    labelText: 'Ciudad',
+                    prefixIcon: Icon(Icons.location_city),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'La ciudad es obligatoria';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _presidenteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Presidente',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'El presidente es obligatorio';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: _seleccionarFecha,
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Fecha de fundación',
+                      prefixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      '${_fechaFundacion.day}/${_fechaFundacion.month}/${_fechaFundacion.year}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // NUEVO: Sección de ubicación
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _latitud == null
-                                  ? 'Sin ubicación registrada'
-                                  : 'Lat: ${_latitud!.toStringAsFixed(6)}\n'
-                                    'Lng: ${_longitud!.toStringAsFixed(6)}\n'
-                                    'Precisión: $_precisionUbicacion',
-                              style: theme.textTheme.bodySmall,
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _latitud == null
+                                    ? 'Sin ubicación registrada'
+                                    : 'Lat: ${_latitud!.toStringAsFixed(6)}\n'
+                                      'Lng: ${_longitud!.toStringAsFixed(6)}\n'
+                                      'Precisión: $_precisionUbicacion',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _cargandoUbicacion ? null : _obtenerUbicacion,
+                            icon: _cargandoUbicacion
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.my_location),
+                            label: Text(
+                              _cargandoUbicacion
+                                  ? 'Obteniendo...'
+                                  : 'Obtener ubicación',
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _cargandoUbicacion ? null : _obtenerUbicacion,
-                          icon: _cargandoUbicacion
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.my_location),
-                          label: Text(
-                            _cargandoUbicacion
-                                ? 'Obteniendo...'
-                                : 'Obtener ubicación',
-                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade300,
-                        foregroundColor: Colors.black,
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          foregroundColor: Colors.black,
+                        ),
+                        child: const Text('Cancelar'),
                       ),
-                      child: const Text('Cancelar'),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _guardar,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _guardar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(_isSaving ? 'Guardando...' : 'Guardar'),
                       ),
-                      child: Text(_isSaving ? 'Guardando...' : 'Guardar'),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -261,50 +263,63 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
     final club = Club(
       nombre: _nombreController.text.trim(),
       ciudad: _ciudadController.text.trim(),
+      presidente: _presidenteController.text.trim(),
       fechaFundacion: _fechaFundacion,
-      latitud: _latitud,                      // NUEVO
-      longitud: _longitud,                    // NUEVO
-      precisionUbicacion: _precisionUbicacion,// NUEVO
+      latitud: _latitud,
+      longitud: _longitud,
+      precisionUbicacion: _precisionUbicacion,
     );
 
-    final connectivityProvider = context.read<ConnectivityProvider>();
-    final hasInternet = connectivityProvider.hasInternet;
+    // 🔥 VERIFICAR BACKEND DIRECTAMENTE
+    final hasInternet = await BackendChecker.estaDisponible();
 
     bool ok;
+    String? errorMsg;
 
     if (hasInternet) {
-      ok = await context.read<ClubProvider>().crearClub(club);
+      try {
+        ok = await context.read<ClubProvider>().crearClub(club);
+        errorMsg = context.read<ClubProvider>().errorMessage;
+      } catch (e) {
+        ok = false;
+        errorMsg = e.toString();
+      }
     } else {
       final syncProvider = context.read<SyncProvider>();
-
       final db = AppDao();
-      await db.insertarClub({
-        'nombre': club.nombre,
-        'ciudad': club.ciudad,
-        'fecha_fundacion': club.fechaFundacion.toIso8601String().split('T').first,
-        'latitud': club.latitud,                     // NUEVO
-        'longitud': club.longitud,                   // NUEVO
-        'precision_ubicacion': club.precisionUbicacion, // NUEVO
-        'pendiente_envio': 1,
-        'ultima_sincronizacion': null,
-        'eliminado_local': 0,
-      });
 
-      await syncProvider.addPendingOperation(
-        operacion: 'crear',
-        entidad: 'club',
-        datos: club.toJson(),
-      );
+      try {
+        await db.insertarClub({
+          'nombre': club.nombre,
+          'ciudad': club.ciudad,
+          'presidente': club.presidente,
+          'fecha_fundacion': club.fechaFundacion.toIso8601String().split('T').first,
+          'latitud': club.latitud,
+          'longitud': club.longitud,
+          'precision_ubicacion': club.precisionUbicacion,
+          'pendiente_envio': 1,
+          'ultima_sincronizacion': null,
+          'eliminado_local': 0,
+        });
 
-      final clubProvider = context.read<ClubProvider>();
-      await clubProvider.loadClubs();
+        await syncProvider.addPendingOperation(
+          operacion: 'crear',
+          entidad: 'club',
+          datos: club.toJson(),
+        );
 
-      ok = true;
+        await context.read<ClubProvider>().loadClubs();
+        ok = true;
+      } catch (e) {
+        ok = false;
+        errorMsg = 'Error al guardar local: $e';
+      }
     }
 
+    if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (ok && mounted) {
+    if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -318,10 +333,10 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
       );
       await context.read<ClubProvider>().loadClubs();
       Navigator.pop(context, true);
-    } else if (mounted) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Error al crear el club'),
+        SnackBar(
+          content: Text(errorMsg ?? '❌ Error al crear el club'),
           backgroundColor: Colors.red,
         ),
       );

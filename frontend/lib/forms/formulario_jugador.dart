@@ -10,7 +10,8 @@ import '../providers/connectivity_provider.dart';
 import '../providers/sync_provider.dart';
 import '../database/app_dao.dart';
 import '../services/permission_service.dart';
-import '../services/foto_service.dart';  // 🔥 NUEVO
+import '../services/foto_service.dart';
+import '../services/backend_checker.dart';
 
 class FormularioJugador extends StatefulWidget {
   final Jugador? jugador;
@@ -69,10 +70,17 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     super.dispose();
   }
 
-  // 🔥 Tomar foto con la cámara
   Future<void> _tomarFoto() async {
-    final ok = await PermissionService.solicitarCamara(context);
-    if (!ok) return;
+    final result = await PermissionService.solicitarCamara(context);
+
+    switch (result) {
+      case PermissionResult.granted:
+        break;
+      case PermissionResult.denied:
+      case PermissionResult.permanentlyDenied:
+      case PermissionResult.serviceDisabled:
+        return;
+    }
 
     final picker = ImagePicker();
     final XFile? foto = await picker.pickImage(
@@ -81,10 +89,8 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     );
 
     if (foto != null) {
-      // 🔥 Copiar la foto a un directorio permanente
       final rutaPermanente = await FotoService.guardarFotoPermanente(foto.path);
-
-      if (rutaPermanente != null) {
+      if (rutaPermanente != null && mounted) {
         setState(() {
           _fotoPath = rutaPermanente;
         });
@@ -92,7 +98,6 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     }
   }
 
-  // 🔥 Escoger foto existente
   Future<void> _escogerFoto() async {
     final picker = ImagePicker();
     final XFile? foto = await picker.pickImage(
@@ -101,10 +106,8 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     );
 
     if (foto != null) {
-      // 🔥 Copiar la foto a un directorio permanente
       final rutaPermanente = await FotoService.guardarFotoPermanente(foto.path);
-
-      if (rutaPermanente != null) {
+      if (rutaPermanente != null && mounted) {
         setState(() {
           _fotoPath = rutaPermanente;
         });
@@ -136,7 +139,6 @@ class _FormularioJugadorState extends State<FormularioJugador> {
               key: _formKey,
               child: Column(
                 children: [
-                  // 🔥 Foto del jugador
                   Center(
                     child: Column(
                       children: [
@@ -357,7 +359,8 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     final connectivityProvider = context.read<ConnectivityProvider>();
     final syncProvider = context.read<SyncProvider>();
 
-    final hasInternet = connectivityProvider.hasInternet;
+    // 🔥 VERIFICAR BACKEND DIRECTAMENTE
+    final hasInternet = await BackendChecker.estaDisponible();
 
     bool success = false;
     String? errorMensaje;

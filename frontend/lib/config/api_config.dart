@@ -1,9 +1,10 @@
 class ApiConfig {
-  // 🔥 Valores por defecto para desarrollo local
-  static const String _defaultApiUrl = 'http://192.168.1.6:3000/api';
+  // 🔥 IP de tu PC en la red WiFi (cámbiala si cambia de red)
+  static const String _defaultApiUrl = 'http://192.168.0.100:3000/api';
   static const String _defaultEnvironment = 'dev';
 
   // 🔥 Configuración desde --dart-define
+  // Uso: flutter run --dart-define=API_URL=http://192.168.0.106:3000/api
   static const String apiUrl = String.fromEnvironment(
     'API_URL',
     defaultValue: _defaultApiUrl,

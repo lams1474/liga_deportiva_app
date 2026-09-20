@@ -23,4 +23,5 @@ Map<String, dynamic> _$JugadorToJson(Jugador instance) => <String, dynamic>{
   'ciudad': instance.ciudad,
   'fecha_nacimiento': instance.fechaNacimiento.toIso8601String(),
   'id_club': instance.idClub,
+  'foto_path': instance.fotoPath,
 };

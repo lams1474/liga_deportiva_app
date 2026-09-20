@@ -22,17 +22,21 @@ model Usuario {
 }
 
 model Club {
-  id_club         Int      @id @default(autoincrement())
-  nombre          String   @unique @db.VarChar(100)
-  ciudad          String   @db.VarChar(100)
-  fecha_fundacion DateTime? @db.Date
-  created_at      DateTime @default(now()) @db.Timestamp(0)
-  updated_at      DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  id_club             Int      @id @default(autoincrement())
+  nombre              String   @unique @db.VarChar(100)
+  ciudad              String   @db.VarChar(100)
+  presidente          String?  @db.VarChar(100)
+  fecha_fundacion     DateTime? @db.Date
+  latitud             Float?   @db.Float
+  longitud            Float?   @db.Float
+  precision_ubicacion String?  @db.VarChar(20)
+  created_at          DateTime @default(now()) @db.Timestamp(0)
+  updated_at          DateTime @default(now()) @updatedAt @db.Timestamp(0)
   
-  jugadores       Jugador[]
-  partidos_local  Partido[] @relation("partidos_local")
-  partidos_visitante Partido[] @relation("partidos_visitante")
-  posiciones      TablaPosiciones[]
+  jugadores           Jugador[]
+  partidos_local      Partido[] @relation("partidos_local")
+  partidos_visitante  Partido[] @relation("partidos_visitante")
+  posiciones          TablaPosiciones[]
 }
 
 model Jugador {

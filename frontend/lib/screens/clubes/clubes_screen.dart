@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
-import '../../providers/auth_provider.dart'; // ← IMPORTANTE: Ya lo tienes
+import '../../providers/auth_provider.dart';
 import '../../widgets/club_card.dart';
 import '../../models/club.dart';
 
@@ -17,6 +17,7 @@ class _ClubesScreenState extends State<ClubesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final authProvider = context.read<AuthProvider>();
       if (authProvider.isAuthenticated) {
         context.read<ClubProvider>().loadClubs();
@@ -115,31 +116,13 @@ class _ClubesScreenState extends State<ClubesScreen> {
                           onTap: () {
                             // Navegar a detalle (opcional)
                           },
-                          onEdit: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/clubes/editar',
-                              arguments: club.idClub,
-                            ).then((result) {
-                              if (result == true && mounted) {
-                                context.read<ClubProvider>().loadClubs();
-                              }
-                            });
-                          },
-                          onDelete: () {
-                            _confirmarEliminacion(context, club);
-                          },
+                          onEdit: () => _editarClub(club),
+                          onDelete: () => _confirmarEliminacion(club),
                         );
                       },
                     ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/clubes/crear').then((result) {
-            if (result == true && mounted) {
-              context.read<ClubProvider>().loadClubs();
-            }
-          });
-        },
+        onPressed: _crearClub,
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
@@ -147,28 +130,80 @@ class _ClubesScreenState extends State<ClubesScreen> {
     );
   }
 
-  void _confirmarEliminacion(BuildContext context, Club club) {
+  // 🔥 CORREGIDO: capturar el provider ANTES de navegar
+  Future<void> _crearClub() async {
+    if (!mounted) return;
+    final clubProvider = context.read<ClubProvider>();
+
+    final result = await Navigator.pushNamed(context, '/clubes/crear');
+
+    if (result == true && mounted) {
+      await clubProvider.loadClubs();
+    }
+  }
+
+  // 🔥 CORREGIDO: capturar el provider ANTES de navegar
+  Future<void> _editarClub(Club club) async {
+    if (!mounted) return;
+    final clubProvider = context.read<ClubProvider>();
+
+    final result = await Navigator.pushNamed(
+      context,
+      '/clubes/editar',
+      arguments: club.idClub,
+    );
+
+    if (result == true && mounted) {
+      await clubProvider.loadClubs();
+    }
+  }
+
+  // 🔥 CORREGIDO: capturar el provider ANTES de mostrar el diálogo
+  void _confirmarEliminacion(Club club) {
+    if (!mounted) return;
+    final clubProvider = context.read<ClubProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar club'),
         content: Text('¿Estás seguro de eliminar ${club.nombre}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancelar'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.read<ClubProvider>().deleteClub(club.idClub!).then((_) {
-                if (mounted) {
-                  context.read<ClubProvider>().loadClubs();
-                }
-              });
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+
+              final ok = await clubProvider.deleteClub(club.idClub!);
+
+              if (!mounted) return;
+
+              if (ok) {
+                await clubProvider.loadClubs();
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ Club eliminado correctamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      clubProvider.errorMessage ?? 'Error al eliminar',
+                    ),
+                    backgroundColor: colorScheme.error,
+                  ),
+                );
+              }
             },
             style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: colorScheme.error,
             ),
             child: const Text('Eliminar'),
           ),

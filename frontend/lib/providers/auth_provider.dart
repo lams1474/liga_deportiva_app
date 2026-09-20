@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../models/usuario.dart';
@@ -6,34 +7,57 @@ import '../services/storage_service.dart';
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
 
+  static const String _tokenKey = 'token';
+  static const String _refreshTokenKey = 'refresh_token';
+  static const String _usuarioKey = 'usuario_actual';
+
   bool _isLoading = false;
+  bool _initialized = false;
   String? _errorMessage;
   Usuario? _usuario;
   String? _token;
 
   bool get isLoading => _isLoading;
+  bool get initialized => _initialized;
   String? get errorMessage => _errorMessage;
   Usuario? get usuario => _usuario;
   String? get token => _token;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
 
   AuthProvider() {
-    _loadToken();
+    _loadSession();
   }
 
-  Future<void> _loadToken() async {
+  /// 🔥 Carga token + usuario desde storage
+  Future<void> _loadSession() async {
     try {
-      _token = await StorageService.getString('token');
+      _token = await StorageService.getString(_tokenKey);
+      final usuarioJson = await StorageService.getString(_usuarioKey);
+
       if (_token != null && _token!.isNotEmpty) {
-        print('✅ Token cargado: ${_token!.substring(0, 20)}...');
+        debugPrint('✅ Token cargado');
+
+        // 🔥 Restaurar usuario desde storage
+        if (usuarioJson != null && usuarioJson.isNotEmpty) {
+          try {
+            _usuario = Usuario.fromJson(jsonDecode(usuarioJson));
+            debugPrint('✅ Usuario restaurado: ${_usuario?.correo} (rol: ${_usuario?.rol})');
+          } catch (e) {
+            debugPrint('⚠️ Error parseando usuario guardado: $e');
+            _usuario = null;
+          }
+        }
       } else {
-        print('❌ No hay token guardado');
+        debugPrint('❌ No hay token guardado');
         _token = null;
+        _usuario = null;
       }
-      notifyListeners();
     } catch (e) {
-      print('❌ Error al cargar token: $e');
+      debugPrint('❌ Error al cargar sesión: $e');
       _token = null;
+      _usuario = null;
+    } finally {
+      _initialized = true;
       notifyListeners();
     }
   }
@@ -49,20 +73,29 @@ class AuthProvider extends ChangeNotifier {
       _token = response.token;
       _usuario = response.usuario;
 
-      // 🔥 Guardar access token
-      await StorageService.setString('token', response.token);
+      // 🔥 Guardar token
+      await StorageService.setString(_tokenKey, response.token);
 
-      // 🔥 Guardar refresh token (si viene en la respuesta)
+      // 🔥 Guardar refresh token
       if (response.refreshToken != null && response.refreshToken!.isNotEmpty) {
-        await StorageService.setString('refresh_token', response.refreshToken!);
-        print('✅ Refresh token guardado');
+        await StorageService.setString(_refreshTokenKey, response.refreshToken!);
+        debugPrint('✅ Refresh token guardado');
+      }
+
+      // 🔥 Guardar usuario completo (para restaurar el rol)
+      if (_usuario != null) {
+        await StorageService.setString(
+          _usuarioKey,
+          jsonEncode(_usuario!.toJson()),
+        );
+        debugPrint('✅ Usuario guardado: rol=${_usuario!.rol}');
       }
 
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -70,11 +103,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await StorageService.remove('token');
-    await StorageService.remove('refresh_token');
+    await StorageService.remove(_tokenKey);
+    await StorageService.remove(_refreshTokenKey);
+    await StorageService.remove(_usuarioKey);
     _token = null;
     _usuario = null;
-    print('✅ Sesión cerrada');
+    debugPrint('✅ Sesión cerrada');
     notifyListeners();
   }
 

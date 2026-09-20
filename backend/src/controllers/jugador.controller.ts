@@ -18,7 +18,7 @@ export class JugadorController {
 
     async crear(req: Request, res: Response) {
         try {
-            const { cedula, nombre, ciudad, fecha_nacimiento, id_club } = req.body;
+            const { cedula, nombre, ciudad, fecha_nacimiento, id_club, foto_path } = req.body;
             const errores: { campo: string; mensaje: string }[] = [];
 
             if (!cedula || cedula.toString().trim() === '') {
@@ -50,13 +50,13 @@ export class JugadorController {
                 ciudad: ciudad.trim(),
                 fecha_nacimiento: new Date(fecha_nacimiento),
                 id_club: Number(id_club),
+                foto_path: foto_path ?? null,  // 🔥 NUEVO
             };
 
             const jugador = await this.service.crear(data);
             res.status(201).json(jugador);
 
         } catch (error: any) {
-            // 🔥 Detectar error de clave única
             if (error.message.includes('Unique constraint') ||
                 error.message.includes('Jugador_cedula_key') ||
                 error.code === 'P2002') {
@@ -88,7 +88,7 @@ export class JugadorController {
     async actualizar(req: Request, res: Response) {
         try {
             const id = Number(req.params.id);
-            const { cedula, nombre, ciudad, fecha_nacimiento, id_club } = req.body;
+            const { cedula, nombre, ciudad, fecha_nacimiento, id_club, foto_path } = req.body;
             const errores: { campo: string; mensaje: string }[] = [];
 
             if (!cedula || cedula.toString().trim() === '') {
@@ -114,6 +114,7 @@ export class JugadorController {
                 ciudad: ciudad.trim(),
                 fecha_nacimiento: fecha_nacimiento ? new Date(fecha_nacimiento) : undefined,
                 id_club: id_club ? Number(id_club) : undefined,
+                foto_path: foto_path ?? null,  // 🔥 NUEVO
             };
 
             const jugador = await this.service.actualizar(id, data);

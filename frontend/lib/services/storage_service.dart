@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
@@ -6,9 +5,10 @@ class StorageService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, value);
-      print('✅ Token guardado en SharedPreferences: ${value.substring(0, 20)}...');
+      final preview = value.length > 20 ? '${value.substring(0, 20)}...' : value;
+      print('✅ Guardado "$key": $preview');
     } catch (e) {
-      print('❌ Error guardando token: $e');
+      print('❌ Error guardando "$key": $e');
     }
   }
 
@@ -17,13 +17,14 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       final value = prefs.getString(key);
       if (value != null && value.isNotEmpty) {
-        print('✅ Token leído de SharedPreferences: ${value.substring(0, 20)}...');
+        final preview = value.length > 20 ? '${value.substring(0, 20)}...' : value;
+        print('✅ Leído "$key": $preview');
       } else {
-        print('❌ No hay token en SharedPreferences');
+        print('❌ No hay valor para "$key"');
       }
       return value;
     } catch (e) {
-      print('❌ Error leyendo token: $e');
+      print('❌ Error leyendo "$key": $e');
       return null;
     }
   }
@@ -32,9 +33,9 @@ class StorageService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(key);
-      print('✅ Token eliminado de SharedPreferences');
+      print('✅ Eliminado "$key"');
     } catch (e) {
-      print('❌ Error eliminando token: $e');
+      print('❌ Error eliminando "$key": $e');
     }
   }
 }

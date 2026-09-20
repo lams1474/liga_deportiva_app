@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../../models/club.dart';
 import '../../services/permission_service.dart';
+import '../../services/backend_checker.dart';
 
 class EditarClubScreen extends StatefulWidget {
   const EditarClubScreen({super.key});
@@ -16,6 +18,7 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
   final _ciudadController = TextEditingController();
+  final _presidenteController = TextEditingController();
   late DateTime _fechaFundacion;
   late int _clubId;
   bool _isLoading = true;
@@ -23,7 +26,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
   String? _errorMessage;
   bool _datosCargados = false;
 
-  // 🔥 NUEVO: Campos de ubicación
   double? _latitud;
   double? _longitud;
   String? _precisionUbicacion;
@@ -48,6 +50,7 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
   void dispose() {
     _nombreController.dispose();
     _ciudadController.dispose();
+    _presidenteController.dispose();
     super.dispose();
   }
 
@@ -86,20 +89,22 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
       if (club != null) {
         _nombreController.text = club.nombre;
         _ciudadController.text = club.ciudad;
+        _presidenteController.text = club.presidente ?? '';
         _fechaFundacion = club.fechaFundacion;
-        _latitud = club.latitud;                  // 🔥 NUEVO
-        _longitud = club.longitud;                // 🔥 NUEVO
-        _precisionUbicacion = club.precisionUbicacion; // 🔥 NUEVO
+        _latitud = club.latitud;
+        _longitud = club.longitud;
+        _precisionUbicacion = club.precisionUbicacion;
       } else {
         await provider.loadClubs();
         final clubReloaded = provider.getClubById(_clubId);
         if (clubReloaded != null) {
           _nombreController.text = clubReloaded.nombre;
           _ciudadController.text = clubReloaded.ciudad;
+          _presidenteController.text = clubReloaded.presidente ?? '';
           _fechaFundacion = clubReloaded.fechaFundacion;
-          _latitud = clubReloaded.latitud;                  // 🔥 NUEVO
-          _longitud = clubReloaded.longitud;                // 🔥 NUEVO
-          _precisionUbicacion = clubReloaded.precisionUbicacion; // 🔥 NUEVO
+          _latitud = clubReloaded.latitud;
+          _longitud = clubReloaded.longitud;
+          _precisionUbicacion = clubReloaded.precisionUbicacion;
         } else {
           setState(() {
             _errorMessage = 'Club no encontrado';
@@ -120,34 +125,28 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
     }
   }
 
-  // 🔥 NUEVO: Obtener ubicación del club
   Future<void> _obtenerUbicacion() async {
-    final ok = await PermissionService.solicitarUbicacion(context);
-    if (!ok) return;
+    final result = await PermissionService.solicitarUbicacion(context);
+
+    switch (result) {
+      case PermissionResult.granted:
+        break;
+      case PermissionResult.denied:
+      case PermissionResult.permanentlyDenied:
+      case PermissionResult.serviceDisabled:
+        return;
+    }
 
     setState(() => _cargandoUbicacion = true);
 
     try {
-      final servicioActivo = await Geolocator.isLocationServiceEnabled();
-      if (!servicioActivo) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('El servicio de ubicación está desactivado. Actívelo en los ajustes del dispositivo.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        setState(() => _cargandoUbicacion = false);
-        return;
-      }
-
       final posicion = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
       final precision = posicion.accuracy < 100 ? 'precisa' : 'aproximada';
 
+      if (!mounted) return;
       setState(() {
         _latitud = posicion.latitude;
         _longitud = posicion.longitude;
@@ -155,24 +154,21 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         _cargandoUbicacion = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('📍 Ubicación obtenida ($precision)'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 Ubicación obtenida ($precision)'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
+      if (!mounted) return;
       setState(() => _cargandoUbicacion = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error al obtener ubicación: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al obtener ubicación: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -180,7 +176,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Estado de carga
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
@@ -205,7 +200,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
       );
     }
 
-    // Estado de error
     if (_errorMessage != null) {
       return Scaffold(
         appBar: AppBar(
@@ -253,7 +247,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
       );
     }
 
-    // Formulario de edición
     return Scaffold(
       appBar: AppBar(
         title: const Text('Editar Club'),
@@ -299,6 +292,20 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+                TextFormField(
+                  controller: _presidenteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Presidente',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'El presidente es obligatorio';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
                 InkWell(
                   onTap: _seleccionarFecha,
                   child: InputDecorator(
@@ -313,8 +320,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // 🔥 NUEVO: Sección de ubicación
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -359,7 +364,6 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
                 Row(
                   children: [
@@ -418,28 +422,35 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         idClub: _clubId,
         nombre: _nombreController.text.trim(),
         ciudad: _ciudadController.text.trim(),
+        presidente: _presidenteController.text.trim(),
         fechaFundacion: _fechaFundacion,
-        latitud: _latitud,                      // 🔥 NUEVO
-        longitud: _longitud,                    // 🔥 NUEVO
-        precisionUbicacion: _precisionUbicacion,// 🔥 NUEVO
+        latitud: _latitud,
+        longitud: _longitud,
+        precisionUbicacion: _precisionUbicacion,
       );
+
+      // 🔥 VERIFICAR BACKEND DIRECTAMENTE
+      final hasInternet = await BackendChecker.estaDisponible();
 
       final ok = await context.read<ClubProvider>().actualizarClub(_clubId, club);
 
+      if (!mounted) return;
       setState(() => _isSaving = false);
 
-      if (ok && mounted) {
+      if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Club actualizado exitosamente'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(
+              hasInternet
+                  ? '✅ Club actualizado exitosamente'
+                  : '📱 Club actualizado localmente (se sincronizará automáticamente)',
+            ),
+            backgroundColor: hasInternet ? Colors.green : Colors.orange,
           ),
         );
         await context.read<ClubProvider>().loadClubs();
-        if (mounted) {
-          Navigator.pop(context, true);
-        }
-      } else if (mounted) {
+        if (mounted) Navigator.pop(context, true);
+      } else {
         final errorMsg = context.read<ClubProvider>().errorMessage ?? 'Error al actualizar el club';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -450,16 +461,15 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 }
