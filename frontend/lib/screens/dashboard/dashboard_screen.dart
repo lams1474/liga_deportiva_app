@@ -13,11 +13,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // 🔥 Verificar autenticación al cargar Dashboard
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final authProvider = context.read<AuthProvider>();
       if (!authProvider.isAuthenticated) {
-        print('⚠️ No hay token en Dashboard, redirigiendo a login');
         Navigator.pushReplacementNamed(context, '/');
       }
     });
@@ -28,20 +27,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final authProvider = context.watch<AuthProvider>();
     final theme = Theme.of(context);
 
-    // 🔥 Si no está autenticado, mostrar carga mientras redirige
     if (!authProvider.isAuthenticated) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Verificando sesión...'),
-            ],
-          ),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -77,10 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 24),
               const Text(
                 'Módulos disponibles',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -95,44 +79,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.sports,
                       label: 'Clubes',
                       color: Colors.blue,
-                      onTap: () {
-                        Navigator.pushNamed(context, '/clubes');
-                      },
+                      onTap: () => Navigator.pushNamed(context, '/clubes'),
                     ),
                     _buildModuleCard(
                       context,
                       icon: Icons.person,
                       label: 'Jugadores',
                       color: Colors.green,
-                      onTap: () {
-                        Navigator.pushNamed(context, '/jugadores');
-                      },
+                      onTap: () => Navigator.pushNamed(context, '/jugadores'),
                     ),
                     _buildModuleCard(
                       context,
                       icon: Icons.sports_baseball,
                       label: 'Disciplinas',
                       color: Colors.orange,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Módulo en desarrollo'),
-                          ),
-                        );
-                      },
+                      onTap: () => Navigator.pushNamed(context, '/disciplinas'),
+                    ),
+                    _buildModuleCard(
+                      context,
+                      icon: Icons.category,
+                      label: 'Categorías',
+                      color: Colors.purple,
+                      onTap: () => Navigator.pushNamed(context, '/categorias'),
+                    ),
+                    _buildModuleCard(
+                      context,
+                      icon: Icons.sports,
+                      label: 'Árbitros',
+                      color: Colors.teal,
+                      onTap: () => Navigator.pushNamed(context, '/arbitros'),
+                    ),
+                    _buildModuleCard(
+                      context,
+                      icon: Icons.calendar_month,
+                      label: 'Temporadas',
+                      color: Colors.indigo,
+                      onTap: () => Navigator.pushNamed(context, '/temporadas'),
                     ),
                     _buildModuleCard(
                       context,
                       icon: Icons.calendar_today,
                       label: 'Partidos',
-                      color: Colors.purple,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Módulo en desarrollo'),
-                          ),
-                        );
-                      },
+                      color: Colors.red,
+                      onTap: () => Navigator.pushNamed(context, '/partidos'),
+                    ),
+                    _buildModuleCard(
+                      context,
+                      icon: Icons.scoreboard,
+                      label: 'Resultados',
+                      color: Colors.amber,
+                      onTap: () => Navigator.pushNamed(context, '/resultados'),
+                    ),
+                    _buildModuleCard(
+                      context,
+                      icon: Icons.emoji_events,
+                      label: 'Tabla Posiciones',
+                      color: Colors.brown,
+                      onTap: () => Navigator.pushNamed(context, '/tabla-posiciones'),
                     ),
                   ],
                 ),
@@ -153,9 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -164,18 +165,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 48,
-                color: color,
-              ),
+              Icon(icon, size: 48, color: color),
               const SizedBox(height: 12),
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
               ),
             ],

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
-import '../../providers/connectivity_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../../models/club.dart';
 import '../../database/app_dao.dart';
@@ -58,8 +57,12 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
     setState(() => _cargandoUbicacion = true);
 
     try {
+      // 🔥 CORREGIDO: usar LocationSettings en vez de desiredAccuracy
       final posicion = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
       );
 
       final precision = posicion.accuracy < 100 ? 'precisa' : 'aproximada';
@@ -177,8 +180,8 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
                                 _latitud == null
                                     ? 'Sin ubicación registrada'
                                     : 'Lat: ${_latitud!.toStringAsFixed(6)}\n'
-                                      'Lng: ${_longitud!.toStringAsFixed(6)}\n'
-                                      'Precisión: $_precisionUbicacion',
+                                          'Lng: ${_longitud!.toStringAsFixed(6)}\n'
+                                          'Precisión: $_precisionUbicacion',
                                 style: theme.textTheme.bodySmall,
                               ),
                             ),
@@ -188,12 +191,16 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: _cargandoUbicacion ? null : _obtenerUbicacion,
+                            onPressed: _cargandoUbicacion
+                                ? null
+                                : _obtenerUbicacion,
                             icon: _cargandoUbicacion
                                 ? const SizedBox(
                                     width: 16,
                                     height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : const Icon(Icons.my_location),
                             label: Text(
@@ -260,6 +267,12 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
 
     setState(() => _isSaving = true);
 
+    // 🔥 CORREGIDO: capturar referencias ANTES de cualquier await
+    final clubProvider = context.read<ClubProvider>();
+    final syncProvider = context.read<SyncProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     final club = Club(
       nombre: _nombreController.text.trim(),
       ciudad: _ciudadController.text.trim(),
@@ -270,7 +283,7 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
       precisionUbicacion: _precisionUbicacion,
     );
 
-    // 🔥 VERIFICAR BACKEND DIRECTAMENTE
+    // 🔥 BackendChecker ya no depende del context
     final hasInternet = await BackendChecker.estaDisponible();
 
     bool ok;
@@ -278,22 +291,23 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
 
     if (hasInternet) {
       try {
-        ok = await context.read<ClubProvider>().crearClub(club);
-        errorMsg = context.read<ClubProvider>().errorMessage;
+        ok = await clubProvider.crearClub(club);
+        errorMsg = clubProvider.errorMessage;
       } catch (e) {
         ok = false;
         errorMsg = e.toString();
       }
     } else {
-      final syncProvider = context.read<SyncProvider>();
-      final db = AppDao();
-
       try {
+        final db = AppDao();
         await db.insertarClub({
           'nombre': club.nombre,
           'ciudad': club.ciudad,
           'presidente': club.presidente,
-          'fecha_fundacion': club.fechaFundacion.toIso8601String().split('T').first,
+          'fecha_fundacion': club.fechaFundacion
+              .toIso8601String()
+              .split('T')
+              .first,
           'latitud': club.latitud,
           'longitud': club.longitud,
           'precision_ubicacion': club.precisionUbicacion,
@@ -308,7 +322,7 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
           datos: club.toJson(),
         );
 
-        await context.read<ClubProvider>().loadClubs();
+        await clubProvider.loadClubs();
         ok = true;
       } catch (e) {
         ok = false;
@@ -320,7 +334,8 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
     setState(() => _isSaving = false);
 
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      // 🔥 Usar referencias capturadas
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(
             hasInternet
@@ -331,10 +346,10 @@ class _CrearClubScreenState extends State<CrearClubScreen> {
           duration: const Duration(seconds: 3),
         ),
       );
-      await context.read<ClubProvider>().loadClubs();
-      Navigator.pop(context, true);
+      await clubProvider.loadClubs();
+      navigator.pop(true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(errorMsg ?? '❌ Error al crear el club'),
           backgroundColor: Colors.red,

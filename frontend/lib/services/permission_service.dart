@@ -4,10 +4,10 @@ import 'package:permission_handler/permission_handler.dart';
 
 /// Resultado de una solicitud de permiso
 enum PermissionResult {
-  granted,              // Concedido
-  denied,               // Denegado (puede volver a pedir)
-  permanentlyDenied,    // Denegación permanente (solo ajustes)
-  serviceDisabled,      // Servicio del dispositivo apagado (GPS)
+  granted, // Concedido
+  denied, // Denegado (puede volver a pedir)
+  permanentlyDenied, // Denegación permanente (solo ajustes)
+  serviceDisabled, // Servicio del dispositivo apagado (GPS)
 }
 
 class PermissionService {
@@ -17,6 +17,10 @@ class PermissionService {
   static Future<PermissionResult> solicitarCamara(BuildContext context) async {
     try {
       final status = await Permission.camera.status;
+
+      // 🔥 Verificar mounted después del await
+      if (!context.mounted) return PermissionResult.denied;
+
       if (status.isGranted) return PermissionResult.granted;
 
       if (status.isPermanentlyDenied || status.isRestricted) {
@@ -25,6 +29,9 @@ class PermissionService {
       }
 
       final result = await Permission.camera.request();
+
+      // 🔥 Verificar mounted después del await
+      if (!context.mounted) return PermissionResult.denied;
 
       if (result.isGranted) return PermissionResult.granted;
 
@@ -47,10 +54,16 @@ class PermissionService {
   // ============================================================
   // UBICACIÓN
   // ============================================================
-  static Future<PermissionResult> solicitarUbicacion(BuildContext context) async {
+  static Future<PermissionResult> solicitarUbicacion(
+    BuildContext context,
+  ) async {
     try {
       // 1. ¿El servicio de ubicación está encendido?
       final servicioActivo = await Geolocator.isLocationServiceEnabled();
+
+      // 🔥 Verificar mounted después del await
+      if (!context.mounted) return PermissionResult.denied;
+
       if (!servicioActivo) {
         await _mostrarDialogoGPSApagado(context);
         return PermissionResult.serviceDisabled;
@@ -58,6 +71,10 @@ class PermissionService {
 
       // 2. ¿Ya tiene permiso?
       final status = await Permission.locationWhenInUse.status;
+
+      // 🔥 Verificar mounted después del await
+      if (!context.mounted) return PermissionResult.denied;
+
       if (status.isGranted) return PermissionResult.granted;
 
       if (status.isPermanentlyDenied || status.isRestricted) {
@@ -67,6 +84,9 @@ class PermissionService {
 
       // 3. Pedir permiso
       final result = await Permission.locationWhenInUse.request();
+
+      // 🔥 Verificar mounted después del await
+      if (!context.mounted) return PermissionResult.denied;
 
       if (result.isGranted) return PermissionResult.granted;
 
@@ -112,7 +132,6 @@ class PermissionService {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(ctx).pop();
-                // Pequeño delay para que el diálogo se cierre antes de abrir Ajustes
                 await Future.delayed(const Duration(milliseconds: 200));
                 try {
                   await openAppSettings();

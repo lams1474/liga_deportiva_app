@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../providers/club_provider.dart';
-import '../../providers/connectivity_provider.dart';
 import '../../models/club.dart';
 import '../../services/permission_service.dart';
 import '../../services/backend_checker.dart';
@@ -140,8 +139,12 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
     setState(() => _cargandoUbicacion = true);
 
     try {
+      // 🔥 CORREGIDO: usar LocationSettings
       final posicion = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
       );
 
       final precision = posicion.accuracy < 100 ? 'precisa' : 'aproximada';
@@ -334,8 +337,8 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
                                 _latitud == null
                                     ? 'Sin ubicación registrada'
                                     : 'Lat: ${_latitud!.toStringAsFixed(6)}\n'
-                                      'Lng: ${_longitud!.toStringAsFixed(6)}\n'
-                                      'Precisión: $_precisionUbicacion',
+                                          'Lng: ${_longitud!.toStringAsFixed(6)}\n'
+                                          'Precisión: $_precisionUbicacion',
                                 style: theme.textTheme.bodySmall,
                               ),
                             ),
@@ -345,12 +348,16 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: _cargandoUbicacion ? null : _obtenerUbicacion,
+                            onPressed: _cargandoUbicacion
+                                ? null
+                                : _obtenerUbicacion,
                             icon: _cargandoUbicacion
                                 ? const SizedBox(
                                     width: 16,
                                     height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : const Icon(Icons.my_location),
                             label: Text(
@@ -417,6 +424,11 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
 
     setState(() => _isSaving = true);
 
+    // 🔥 CORREGIDO: capturar referencias ANTES de cualquier await
+    final clubProvider = context.read<ClubProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     try {
       final club = Club(
         idClub: _clubId,
@@ -429,16 +441,17 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
         precisionUbicacion: _precisionUbicacion,
       );
 
-      // 🔥 VERIFICAR BACKEND DIRECTAMENTE
+      // 🔥 BackendChecker no depende del context
       final hasInternet = await BackendChecker.estaDisponible();
 
-      final ok = await context.read<ClubProvider>().actualizarClub(_clubId, club);
+      final ok = await clubProvider.actualizarClub(_clubId, club);
 
       if (!mounted) return;
       setState(() => _isSaving = false);
 
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        // 🔥 Usar referencias capturadas
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(
               hasInternet
@@ -448,11 +461,12 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
             backgroundColor: hasInternet ? Colors.green : Colors.orange,
           ),
         );
-        await context.read<ClubProvider>().loadClubs();
-        if (mounted) Navigator.pop(context, true);
+        await clubProvider.loadClubs();
+        navigator.pop(true);
       } else {
-        final errorMsg = context.read<ClubProvider>().errorMessage ?? 'Error al actualizar el club';
-        ScaffoldMessenger.of(context).showSnackBar(
+        final errorMsg =
+            clubProvider.errorMessage ?? 'Error al actualizar el club';
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('❌ $errorMsg'),
             backgroundColor: Colors.red,
@@ -463,7 +477,7 @@ class _EditarClubScreenState extends State<EditarClubScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text('❌ Error: ${e.toString()}'),
           backgroundColor: Colors.red,

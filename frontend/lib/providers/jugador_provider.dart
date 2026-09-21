@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/jugador.dart';
 import '../services/jugador_service.dart';
-import '../database/app_dao.dart';
 
 class JugadorProvider extends ChangeNotifier {
   final JugadorService _service;
@@ -24,7 +23,6 @@ class JugadorProvider extends ChangeNotifier {
     try {
       _jugadores = await _service.getJugadores();
     } catch (e) {
-      // 🔥 Quitar el prefijo "Exception: "
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLoading = false;
@@ -66,7 +64,6 @@ class JugadorProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // 🔥 Quitar el prefijo "Exception: "
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
@@ -86,7 +83,6 @@ class JugadorProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // 🔥 Quitar el prefijo "Exception: "
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
@@ -108,7 +104,7 @@ class JugadorProvider extends ChangeNotifier {
   }
 
   // ============================================================
-  // 🔥 MÉTODOS DE SINCRONIZACIÓN
+  // MÉTODOS DE SINCRONIZACIÓN
   // ============================================================
 
   Future<bool> syncCreateJugador(Jugador jugador) async {

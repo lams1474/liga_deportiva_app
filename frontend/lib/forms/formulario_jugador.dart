@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../models/jugador.dart';
 import '../providers/jugador_provider.dart';
 import '../providers/club_provider.dart';
-import '../providers/connectivity_provider.dart';
 import '../providers/sync_provider.dart';
 import '../database/app_dao.dart';
 import '../services/permission_service.dart';
@@ -17,11 +16,7 @@ class FormularioJugador extends StatefulWidget {
   final Jugador? jugador;
   final VoidCallback? onSuccess;
 
-  const FormularioJugador({
-    super.key,
-    this.jugador,
-    this.onSuccess,
-  });
+  const FormularioJugador({super.key, this.jugador, this.onSuccess});
 
   @override
   State<FormularioJugador> createState() => _FormularioJugadorState();
@@ -49,7 +44,9 @@ class _FormularioJugadorState extends State<FormularioJugador> {
       _clubSeleccionado = widget.jugador!.idClub;
       _fotoPath = widget.jugador!.fotoPath;
     } else {
-      _fechaNacimiento = DateTime.now().subtract(const Duration(days: 365 * 18));
+      _fechaNacimiento = DateTime.now().subtract(
+        const Duration(days: 365 * 18),
+      );
       _clubSeleccionado = null;
       _fotoPath = null;
     }
@@ -156,7 +153,11 @@ class _FormularioJugadorState extends State<FormularioJugador> {
                                 : null,
                           ),
                           child: _fotoPath == null
-                              ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 50,
+                                  color: Colors.grey,
+                                )
                               : null,
                         ),
                         const SizedBox(height: 8),
@@ -253,7 +254,7 @@ class _FormularioJugadorState extends State<FormularioJugador> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
-                    value: _clubSeleccionado,
+                    initialValue: _clubSeleccionado,
                     decoration: const InputDecoration(
                       labelText: 'Club',
                       prefixIcon: Icon(Icons.sports),
@@ -356,7 +357,6 @@ class _FormularioJugadorState extends State<FormularioJugador> {
     );
 
     final provider = context.read<JugadorProvider>();
-    final connectivityProvider = context.read<ConnectivityProvider>();
     final syncProvider = context.read<SyncProvider>();
 
     // 🔥 VERIFICAR BACKEND DIRECTAMENTE
@@ -370,7 +370,10 @@ class _FormularioJugadorState extends State<FormularioJugador> {
         if (widget.jugador == null) {
           success = await provider.createJugador(jugador);
         } else {
-          success = await provider.updateJugador(widget.jugador!.idJugador!, jugador);
+          success = await provider.updateJugador(
+            widget.jugador!.idJugador!,
+            jugador,
+          );
         }
         errorMensaje = provider.errorMessage;
       } else {
@@ -380,7 +383,10 @@ class _FormularioJugadorState extends State<FormularioJugador> {
           'cedula': jugador.cedula,
           'nombre': jugador.nombre,
           'ciudad': jugador.ciudad,
-          'fecha_nacimiento': jugador.fechaNacimiento.toIso8601String().split('T').first,
+          'fecha_nacimiento': jugador.fechaNacimiento
+              .toIso8601String()
+              .split('T')
+              .first,
           'id_club': jugador.idClub,
           'foto_path': jugador.fotoPath,
           'pendiente_envio': 1,
