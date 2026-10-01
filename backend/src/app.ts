@@ -41,22 +41,41 @@ console.log("jugadorDisciplina OK");
 
 import authRoutes from "./routes/auth.routes";
 
-import { verificarToken } from "./middlewares/auth.middleware";
-
-import { verificarRol } from "./middlewares/rol.middleware";
-
-
-
 const app = express();
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// 🔥 CORS configurado explícitamente
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+  ],
+  exposedHeaders: ["Content-Length", "X-JWT-Token"],
+  maxAge: 86400,
+};
 
-// Middlewares
-app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
+
+// 🔥 Helmet configurado para permitir CORS
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    contentSecurityPolicy: false,
+  }),
+);
+
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// 🔥 Swagger
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Ruta principal
 app.get("/", (req, res) => {
@@ -68,7 +87,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
     message: "Servidor funcionando correctamente",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -85,7 +104,6 @@ app.use("/api/resultados", resultadoRoutes);
 app.use("/api/tabla-posiciones", tablaPosicionesRoutes);
 app.use("/api/jugador-disciplina", jugadorDisciplinaRoutes);
 app.use("/api/auth", authRoutes);
-
 
 console.log("APP CARGADA");
 console.log("Registrando /api/partidos");
